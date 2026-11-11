@@ -1,0 +1,1229 @@
+{
+  "tabs": {
+    "exceptions": [
+      [
+        "list",
+        "Exceptions"
+      ],
+      [
+        "students",
+        "Student risk"
+      ],
+      [
+        "rules",
+        "Rules"
+      ]
+    ],
+    "attendance": [
+      [
+        "daily",
+        "Daily attendance"
+      ],
+      [
+        "weekly",
+        "Weekly attendance"
+      ],
+      [
+        "matrix",
+        "Student matrix"
+      ],
+      [
+        "interv",
+        "Intervention tracker"
+      ]
+    ],
+    "sla": [
+      [
+        "daily",
+        "Daily delivery"
+      ],
+      [
+        "timetable",
+        "Timetable adherence"
+      ],
+      [
+        "batch",
+        "Batch SLA"
+      ],
+      [
+        "mentor",
+        "Mentor SLA"
+      ],
+      [
+        "subject",
+        "Subject-wise"
+      ],
+      [
+        "log",
+        "Exception log"
+      ]
+    ],
+    "academic": [
+      [
+        "overview",
+        "Overview"
+      ],
+      [
+        "subjects",
+        "Subjects & batches"
+      ],
+      [
+        "risk",
+        "Students requiring intervention"
+      ],
+      [
+        "backlog",
+        "Assessment backlog"
+      ]
+    ],
+    "mentors": [
+      [
+        "score",
+        "Scorecard"
+      ],
+      [
+        "trend",
+        "Weekly trend"
+      ],
+      [
+        "workload",
+        "Workload"
+      ],
+      [
+        "feedback",
+        "Feedback"
+      ],
+      [
+        "exceptions",
+        "Exception log"
+      ]
+    ],
+    "operations": [
+      [
+        "planned",
+        "Planned vs completed"
+      ],
+      [
+        "trend",
+        "On-time trend"
+      ],
+      [
+        "overdue",
+        "Overdue by function & owner"
+      ],
+      [
+        "aging",
+        "Delay aging"
+      ],
+      [
+        "funnel",
+        "Bottleneck funnel"
+      ],
+      [
+        "blocked",
+        "Blocked or halted"
+      ],
+      [
+        "deps",
+        "Dependencies & critical path"
+      ],
+      [
+        "gantt",
+        "Gantt timeline"
+      ],
+      [
+        "register",
+        "Task register"
+      ]
+    ],
+    "dq": [
+      [
+        "pareto",
+        "Error categories"
+      ],
+      [
+        "trend",
+        "Trend"
+      ],
+      [
+        "source",
+        "By source"
+      ],
+      [
+        "log",
+        "Correction log"
+      ]
+    ],
+    "tech": [
+      [
+        "overview",
+        "System health"
+      ],
+      [
+        "incidents",
+        "Incident log"
+      ],
+      [
+        "integrations",
+        "Integrations"
+      ],
+      [
+        "releases",
+        "Releases & bugs"
+      ],
+      [
+        "drill",
+        "System drill-down"
+      ]
+    ],
+    "experience": [
+      [
+        "student",
+        "Student communication"
+      ],
+      [
+        "parent",
+        "Parent communication"
+      ],
+      [
+        "sat",
+        "Satisfaction"
+      ],
+      [
+        "resolution",
+        "Issue resolution"
+      ]
+    ],
+    "tickets": [
+      [
+        "queue",
+        "Ticket queue"
+      ],
+      [
+        "breach",
+        "Breaching SLA"
+      ],
+      [
+        "analytics",
+        "Analytics"
+      ],
+      [
+        "feedback",
+        "Resolved & feedback"
+      ]
+    ],
+    "calendar": [
+      [
+        "calendar",
+        "Master calendar"
+      ],
+      [
+        "conflicts",
+        "Conflict matrix"
+      ],
+      [
+        "disruptions",
+        "Disruptions"
+      ],
+      [
+        "makeup",
+        "Make-up tracker"
+      ],
+      [
+        "risk",
+        "Deadline risk"
+      ]
+    ],
+    "assess": [
+      [
+        "lifecycle",
+        "Lifecycle"
+      ],
+      [
+        "readiness",
+        "Readiness checklist"
+      ],
+      [
+        "matrix",
+        "Semester progress"
+      ],
+      [
+        "overdue",
+        "Overdue evaluations"
+      ],
+      [
+        "timeline",
+        "Publication timeline"
+      ],
+      [
+        "improve",
+        "Improvement & corrections"
+      ]
+    ],
+    "compliance": [
+      [
+        "tracker",
+        "Tracker"
+      ],
+      [
+        "calendar",
+        "Compliance calendar"
+      ],
+      [
+        "breach",
+        "Deadline breach log"
+      ],
+      [
+        "funnel",
+        "Submission funnel"
+      ]
+    ],
+    "ojt": [
+      [
+        "overview",
+        "Overview"
+      ],
+      [
+        "projects",
+        "Projects"
+      ],
+      [
+        "delayed",
+        "Delayed milestones"
+      ],
+      [
+        "students",
+        "Student progress"
+      ],
+      [
+        "reviews",
+        "Reviews & vivas"
+      ],
+      [
+        "outcomes",
+        "Outcomes"
+      ]
+    ],
+    "actions": [
+      [
+        "all",
+        "All actions"
+      ],
+      [
+        "mine",
+        "My actions"
+      ],
+      [
+        "overdue",
+        "Overdue"
+      ],
+      [
+        "critical",
+        "Critical escalations"
+      ],
+      [
+        "today",
+        "Due today"
+      ],
+      [
+        "week",
+        "Due this week"
+      ],
+      [
+        "verify",
+        "Awaiting verification"
+      ],
+      [
+        "reopened",
+        "Reopened"
+      ],
+      [
+        "roots",
+        "Repeat root causes"
+      ],
+      [
+        "closure",
+        "Closure rate"
+      ]
+    ]
+  },
+  "charts": [
+    {
+      "view": "command",
+      "type": "lineChart",
+      "title": "",
+      "conditions": [
+        "attMode === \"weekly\""
+      ],
+      "line": 5507
+    },
+    {
+      "view": "command",
+      "type": "lineChart",
+      "title": "",
+      "conditions": [
+        "attMode === \"weekly\""
+      ],
+      "line": 5526
+    },
+    {
+      "view": "command",
+      "type": "lineChart",
+      "title": "On-time class delivery",
+      "conditions": [],
+      "line": 5575
+    },
+    {
+      "view": "command",
+      "type": "lineChart",
+      "title": "Assessment completion",
+      "conditions": [],
+      "line": 5596
+    },
+    {
+      "view": "command",
+      "type": "lineChart",
+      "title": "Student academic performance",
+      "conditions": [],
+      "line": 5617
+    },
+    {
+      "view": "command",
+      "type": "lineChart",
+      "title": "SLA compliance",
+      "conditions": [],
+      "line": 5639
+    },
+    {
+      "view": "command",
+      "type": "lineChart",
+      "title": "Open vs resolved issues",
+      "conditions": [],
+      "line": 5654
+    },
+    {
+      "view": "command",
+      "type": "lineChart",
+      "title": "Overdue operational tasks",
+      "conditions": [],
+      "line": 5670
+    },
+    {
+      "view": "exceptions",
+      "type": "hbars",
+      "title": "By area",
+      "conditions": [
+        "cur === \"list\""
+      ],
+      "line": 5840
+    },
+    {
+      "view": "exceptions",
+      "type": "stackbar",
+      "title": "Exceptions by severity",
+      "conditions": [
+        "cur === \"list\""
+      ],
+      "line": 5842
+    },
+    {
+      "view": "exceptions",
+      "type": "hbars",
+      "title": "Flags by rule",
+      "conditions": [
+        "cur === \"students\""
+      ],
+      "line": 5895
+    },
+    {
+      "view": "trends",
+      "type": "barChart",
+      "title": "",
+      "conditions": [
+        "gran === \"semester\""
+      ],
+      "line": 5936
+    },
+    {
+      "view": "trends",
+      "type": "lineChart",
+      "title": "",
+      "conditions": [
+        "gran === \"semester\""
+      ],
+      "line": 5960
+    },
+    {
+      "view": "trends",
+      "type": "hbars",
+      "title": "",
+      "conditions": [],
+      "line": 6078
+    },
+    {
+      "view": "trends",
+      "type": "heatmap",
+      "title": "\"Heatmap · \" + (mk === \"taskOn\" ? \"function\" : \"batch\") + \" × week\"",
+      "conditions": [],
+      "line": 6309
+    },
+    {
+      "view": "attendance",
+      "type": "lineChart",
+      "title": "",
+      "conditions": [
+        "cur === \"daily\"",
+        "mode === \"inst\""
+      ],
+      "line": 6343
+    },
+    {
+      "view": "attendance",
+      "type": "lineChart",
+      "title": "",
+      "conditions": [
+        "cur === \"daily\"",
+        "mode === \"inst\""
+      ],
+      "line": 6358
+    },
+    {
+      "view": "attendance",
+      "type": "barChart",
+      "title": "Daily absence count",
+      "conditions": [
+        "cur === \"daily\""
+      ],
+      "line": 6395
+    },
+    {
+      "view": "attendance",
+      "type": "lineChart",
+      "title": "Weekly attendance",
+      "conditions": [
+        "cur === \"daily\"",
+        "cur === \"weekly\""
+      ],
+      "line": 6476
+    },
+    {
+      "view": "attendance",
+      "type": "heatmap",
+      "title": "Weekly heatmap · batch × week",
+      "conditions": [
+        "cur === \"daily\"",
+        "cur === \"weekly\""
+      ],
+      "line": 6477
+    },
+    {
+      "view": "sla",
+      "type": "barChart",
+      "title": "Scheduled vs delivered, by day",
+      "conditions": [
+        "cur === \"daily\""
+      ],
+      "line": 6820
+    },
+    {
+      "view": "sla",
+      "type": "lineChart",
+      "title": "Daily SLA compliance",
+      "conditions": [
+        "cur === \"daily\""
+      ],
+      "line": 6848
+    },
+    {
+      "view": "sla",
+      "type": "heatmap",
+      "title": "Weekly timetable adherence",
+      "conditions": [
+        "cur === \"daily\"",
+        "cur === \"timetable\""
+      ],
+      "line": 6876
+    },
+    {
+      "view": "sla",
+      "type": "hbars",
+      "title": "SLA by time slot",
+      "conditions": [
+        "cur === \"daily\"",
+        "cur === \"timetable\""
+      ],
+      "line": 6879
+    },
+    {
+      "view": "sla",
+      "type": "hbars",
+      "title": "SLA by weekday",
+      "conditions": [
+        "cur === \"daily\"",
+        "cur === \"timetable\""
+      ],
+      "line": 6891
+    },
+    {
+      "view": "sla",
+      "type": "heatmap",
+      "title": "Subject × week SLA",
+      "conditions": [
+        "cur === \"daily\"",
+        "cur === \"timetable\"",
+        "cur === \"batch\"",
+        "cur === \"mentor\"",
+        "cur === \"subject\""
+      ],
+      "line": 7026
+    },
+    {
+      "view": "academic",
+      "type": "barChart",
+      "title": "Score distribution",
+      "conditions": [
+        "cur === \"overview\""
+      ],
+      "line": 7289
+    },
+    {
+      "view": "academic",
+      "type": "lineChart",
+      "title": "Semester performance trend",
+      "conditions": [
+        "cur === \"overview\""
+      ],
+      "line": 7292
+    },
+    {
+      "view": "academic",
+      "type": "scatter",
+      "title": "Attendance vs performance",
+      "conditions": [
+        "cur === \"overview\""
+      ],
+      "line": 7314
+    },
+    {
+      "view": "academic",
+      "type": "hbars",
+      "title": "Batch comparison",
+      "conditions": [
+        "cur === \"overview\""
+      ],
+      "line": 7338
+    },
+    {
+      "view": "academic",
+      "type": "hbars",
+      "title": "Batch comparison",
+      "conditions": [
+        "cur === \"overview\""
+      ],
+      "line": 7355
+    },
+    {
+      "view": "academic",
+      "type": "heatmap",
+      "title": "Subject-wise performance heatmap",
+      "conditions": [
+        "cur === \"overview\"",
+        "cur === \"subjects\""
+      ],
+      "line": 7384
+    },
+    {
+      "view": "academic",
+      "type": "spark",
+      "title": "",
+      "conditions": [
+        "cur === \"overview\"",
+        "cur === \"subjects\"",
+        "cur === \"risk\""
+      ],
+      "line": 7403
+    },
+    {
+      "view": "mentors",
+      "type": "lineChart",
+      "title": "Weekly on-time delivery",
+      "conditions": [
+        "cur === \"score\"",
+        "cur === \"trend\""
+      ],
+      "line": 7736
+    },
+    {
+      "view": "mentors",
+      "type": "barChart",
+      "title": "Weekly classes: delivered vs breaches",
+      "conditions": [
+        "cur === \"score\"",
+        "cur === \"trend\""
+      ],
+      "line": 7756
+    },
+    {
+      "view": "mentors",
+      "type": "barChart",
+      "title": "Workload by mentor and batch",
+      "conditions": [
+        "cur === \"score\"",
+        "cur === \"trend\"",
+        "cur === \"workload\""
+      ],
+      "line": 7774
+    },
+    {
+      "view": "mentors",
+      "type": "barChart",
+      "title": "Feedback distribution · all mentors in view",
+      "conditions": [
+        "cur === \"score\"",
+        "cur === \"trend\"",
+        "cur === \"workload\"",
+        "cur === \"feedback\""
+      ],
+      "line": 7813
+    },
+    {
+      "view": "mentors",
+      "type": "barChart",
+      "title": "Feedback distribution · selected mentor",
+      "conditions": [
+        "cur === \"score\"",
+        "cur === \"trend\"",
+        "cur === \"workload\"",
+        "cur === \"feedback\""
+      ],
+      "line": 7814
+    },
+    {
+      "view": "operations",
+      "type": "barChart",
+      "title": "Planned vs completed milestones, by process",
+      "conditions": [
+        "cur === \"planned\""
+      ],
+      "line": 7975
+    },
+    {
+      "view": "operations",
+      "type": "lineChart",
+      "title": "On-time task completion trend",
+      "conditions": [
+        "cur === \"planned\"",
+        "cur === \"trend\""
+      ],
+      "line": 8027
+    },
+    {
+      "view": "operations",
+      "type": "barChart",
+      "title": "Tasks due vs completed on time, per week",
+      "conditions": [
+        "cur === \"planned\"",
+        "cur === \"trend\""
+      ],
+      "line": 8030
+    },
+    {
+      "view": "operations",
+      "type": "barChart",
+      "title": "Overdue tasks by function",
+      "conditions": [
+        "cur === \"planned\"",
+        "cur === \"trend\"",
+        "cur === \"overdue\""
+      ],
+      "line": 8047
+    },
+    {
+      "view": "operations",
+      "type": "hbars",
+      "title": "Overdue tasks by owner",
+      "conditions": [
+        "cur === \"planned\"",
+        "cur === \"trend\"",
+        "cur === \"overdue\""
+      ],
+      "line": 8076
+    },
+    {
+      "view": "operations",
+      "type": "barChart",
+      "title": "Delay aging buckets",
+      "conditions": [
+        "cur === \"planned\"",
+        "cur === \"trend\"",
+        "cur === \"overdue\"",
+        "cur === \"aging\""
+      ],
+      "line": 8092
+    },
+    {
+      "view": "operations",
+      "type": "hbars",
+      "title": "Escalation levels",
+      "conditions": [
+        "cur === \"planned\"",
+        "cur === \"trend\"",
+        "cur === \"overdue\"",
+        "cur === \"aging\""
+      ],
+      "line": 8095
+    },
+    {
+      "view": "operations",
+      "type": "funnel",
+      "title": "Process bottleneck funnel",
+      "conditions": [
+        "cur === \"planned\"",
+        "cur === \"trend\"",
+        "cur === \"overdue\"",
+        "cur === \"aging\"",
+        "cur === \"funnel\""
+      ],
+      "line": 8114
+    },
+    {
+      "view": "operations",
+      "type": "hbars",
+      "title": "Where work is stuck",
+      "conditions": [
+        "cur === \"planned\"",
+        "cur === \"trend\"",
+        "cur === \"overdue\"",
+        "cur === \"aging\"",
+        "cur === \"funnel\""
+      ],
+      "line": 8126
+    },
+    {
+      "view": "operations",
+      "type": "gantt",
+      "title": "Milestone timeline",
+      "conditions": [
+        "cur === \"planned\"",
+        "cur === \"trend\"",
+        "cur === \"overdue\"",
+        "cur === \"aging\"",
+        "cur === \"funnel\"",
+        "cur === \"blocked\"",
+        "cur === \"deps\"",
+        "cur === \"gantt\""
+      ],
+      "line": 8189
+    },
+    {
+      "view": "dq",
+      "type": "pareto",
+      "title": "Pareto of error categories",
+      "conditions": [
+        "cur === \"pareto\""
+      ],
+      "line": 8338
+    },
+    {
+      "view": "dq",
+      "type": "hbars",
+      "title": "Repeat errors by category and source",
+      "conditions": [
+        "cur === \"pareto\""
+      ],
+      "line": 8340
+    },
+    {
+      "view": "dq",
+      "type": "lineChart",
+      "title": "Weekly error rate",
+      "conditions": [
+        "cur === \"pareto\"",
+        "cur === \"trend\""
+      ],
+      "line": 8361
+    },
+    {
+      "view": "dq",
+      "type": "lineChart",
+      "title": "Weekly first-time-right",
+      "conditions": [
+        "cur === \"pareto\"",
+        "cur === \"trend\""
+      ],
+      "line": 8382
+    },
+    {
+      "view": "dq",
+      "type": "hbars",
+      "title": "Error rate by source system",
+      "conditions": [
+        "cur === \"pareto\"",
+        "cur === \"trend\"",
+        "cur === \"source\""
+      ],
+      "line": 8401
+    },
+    {
+      "view": "tech",
+      "type": "spark",
+      "title": "",
+      "conditions": [
+        "cur === \"overview\""
+      ],
+      "line": 8608
+    },
+    {
+      "view": "tech",
+      "type": "lineChart",
+      "title": "Service availability trend",
+      "conditions": [
+        "cur === \"overview\""
+      ],
+      "line": 8614
+    },
+    {
+      "view": "tech",
+      "type": "lineChart",
+      "title": "Integration success rate by week",
+      "conditions": [
+        "cur === \"overview\"",
+        "cur === \"incidents\"",
+        "cur === \"integrations\""
+      ],
+      "line": 8667
+    },
+    {
+      "view": "tech",
+      "type": "hbars",
+      "title": "Success rate in period",
+      "conditions": [
+        "cur === \"overview\"",
+        "cur === \"incidents\"",
+        "cur === \"integrations\""
+      ],
+      "line": 8691
+    },
+    {
+      "view": "tech",
+      "type": "stackbar",
+      "title": "",
+      "conditions": [
+        "cur === \"overview\"",
+        "cur === \"incidents\"",
+        "cur === \"integrations\"",
+        "cur === \"releases\""
+      ],
+      "line": 8740
+    },
+    {
+      "view": "tech",
+      "type": "lineChart",
+      "title": "sel + \" · daily availability\"",
+      "conditions": [
+        "cur === \"overview\"",
+        "cur === \"incidents\"",
+        "cur === \"integrations\"",
+        "cur === \"releases\""
+      ],
+      "line": 8783
+    },
+    {
+      "view": "experience",
+      "type": "barChart",
+      "title": "Communication volume by channel",
+      "conditions": [
+        "cur === \"student\" || cur === \"parent\""
+      ],
+      "line": 8928
+    },
+    {
+      "view": "experience",
+      "type": "lineChart",
+      "title": "Weekly volume and acknowledgement",
+      "conditions": [
+        "cur === \"student\" || cur === \"parent\""
+      ],
+      "line": 8947
+    },
+    {
+      "view": "experience",
+      "type": "lineChart",
+      "title": "Satisfaction trend",
+      "conditions": [
+        "cur === \"student\" || cur === \"parent\"",
+        "cur === \"sat\""
+      ],
+      "line": 9084
+    },
+    {
+      "view": "experience",
+      "type": "hbars",
+      "title": "Common feedback themes",
+      "conditions": [
+        "cur === \"student\" || cur === \"parent\"",
+        "cur === \"sat\""
+      ],
+      "line": 9108
+    },
+    {
+      "view": "tickets",
+      "type": "hbars",
+      "title": "Open tickets by category",
+      "conditions": [
+        "cur === \"queue\"",
+        "cur === \"breach\"",
+        "cur === \"analytics\""
+      ],
+      "line": 9432
+    },
+    {
+      "view": "tickets",
+      "type": "barChart",
+      "title": "Aging buckets",
+      "conditions": [
+        "cur === \"queue\"",
+        "cur === \"breach\"",
+        "cur === \"analytics\""
+      ],
+      "line": 9432
+    },
+    {
+      "view": "tickets",
+      "type": "hbars",
+      "title": "Open tickets by batch",
+      "conditions": [
+        "cur === \"queue\"",
+        "cur === \"breach\"",
+        "cur === \"analytics\""
+      ],
+      "line": 9432
+    },
+    {
+      "view": "tickets",
+      "type": "hbars",
+      "title": "Open tickets by owner",
+      "conditions": [
+        "cur === \"queue\"",
+        "cur === \"breach\"",
+        "cur === \"analytics\""
+      ],
+      "line": 9432
+    },
+    {
+      "view": "calendar",
+      "type": "heatmap",
+      "title": "Scheduling conflict matrix",
+      "conditions": [
+        "cur === \"calendar\"",
+        "cur === \"conflicts\""
+      ],
+      "line": 9718
+    },
+    {
+      "view": "calendar",
+      "type": "barChart",
+      "title": "Disruption trend",
+      "conditions": [
+        "cur === \"calendar\"",
+        "cur === \"conflicts\"",
+        "cur === \"disruptions\""
+      ],
+      "line": 9777
+    },
+    {
+      "view": "calendar",
+      "type": "hbars",
+      "title": "Impact by batch",
+      "conditions": [
+        "cur === \"calendar\"",
+        "cur === \"conflicts\"",
+        "cur === \"disruptions\""
+      ],
+      "line": 9810
+    },
+    {
+      "view": "calendar",
+      "type": "hbars",
+      "title": "Reasons",
+      "conditions": [
+        "cur === \"calendar\"",
+        "cur === \"conflicts\"",
+        "cur === \"disruptions\""
+      ],
+      "line": 9825
+    },
+    {
+      "view": "assess",
+      "type": "funnel",
+      "title": "Assessments by lifecycle stage",
+      "conditions": [
+        "cur === \"lifecycle\""
+      ],
+      "line": 10115
+    },
+    {
+      "view": "assess",
+      "type": "hbars",
+      "title": "Evaluation progress",
+      "conditions": [
+        "cur === \"lifecycle\""
+      ],
+      "line": 10135
+    },
+    {
+      "view": "assess",
+      "type": "heatmap",
+      "title": "Semester-wise progress matrix",
+      "conditions": [
+        "cur === \"lifecycle\"",
+        "cur === \"readiness\"",
+        "cur === \"matrix\""
+      ],
+      "line": 10217
+    },
+    {
+      "view": "assess",
+      "type": "lineChart",
+      "title": "Cumulative assessments conducted vs published",
+      "conditions": [
+        "cur === \"lifecycle\"",
+        "cur === \"readiness\"",
+        "cur === \"matrix\"",
+        "cur === \"overdue\"",
+        "cur === \"timeline\""
+      ],
+      "line": 10258
+    },
+    {
+      "view": "compliance",
+      "type": "funnel",
+      "title": "Submission-to-approval funnel",
+      "conditions": [
+        "cur === \"tracker\"",
+        "cur === \"calendar\"",
+        "cur === \"breach\""
+      ],
+      "line": 10607
+    },
+    {
+      "view": "compliance",
+      "type": "hbars",
+      "title": "Completion by category",
+      "conditions": [
+        "cur === \"tracker\"",
+        "cur === \"calendar\"",
+        "cur === \"breach\""
+      ],
+      "line": 10614
+    },
+    {
+      "view": "ojt",
+      "type": "funnel",
+      "title": "Project allocation funnel (students)",
+      "conditions": [
+        "cur === \"overview\""
+      ],
+      "line": 10732
+    },
+    {
+      "view": "ojt",
+      "type": "stackbar",
+      "title": "Project status distribution",
+      "conditions": [
+        "cur === \"overview\""
+      ],
+      "line": 10737
+    },
+    {
+      "view": "ojt",
+      "type": "hbars",
+      "title": "Batch-wise completion",
+      "conditions": [
+        "cur === \"overview\""
+      ],
+      "line": 10740
+    },
+    {
+      "view": "ojt",
+      "type": "stackbar",
+      "title": "Demo readiness",
+      "conditions": [
+        "cur === \"overview\""
+      ],
+      "line": 10757
+    },
+    {
+      "view": "ojt",
+      "type": "hbars",
+      "title": "Mentor review compliance",
+      "conditions": [
+        "cur === \"overview\"",
+        "cur === \"projects\"",
+        "cur === \"delayed\"",
+        "cur === \"students\"",
+        "cur === \"reviews\""
+      ],
+      "line": 10897
+    },
+    {
+      "view": "ojt",
+      "type": "barChart",
+      "title": "Viva and evaluation completion",
+      "conditions": [
+        "cur === \"overview\"",
+        "cur === \"projects\"",
+        "cur === \"delayed\"",
+        "cur === \"students\"",
+        "cur === \"reviews\""
+      ],
+      "line": 10920
+    },
+    {
+      "view": "ojt",
+      "type": "hbars",
+      "title": "Internship and industry-engagement outcomes",
+      "conditions": [
+        "cur === \"overview\"",
+        "cur === \"projects\"",
+        "cur === \"delayed\"",
+        "cur === \"students\"",
+        "cur === \"reviews\""
+      ],
+      "line": 10949
+    },
+    {
+      "view": "ojt",
+      "type": "barChart",
+      "title": "Outcomes by project type",
+      "conditions": [
+        "cur === \"overview\"",
+        "cur === \"projects\"",
+        "cur === \"delayed\"",
+        "cur === \"students\"",
+        "cur === \"reviews\""
+      ],
+      "line": 10957
+    },
+    {
+      "view": "actions",
+      "type": "hbars",
+      "title": "Repeat root causes",
+      "conditions": [
+        "tabNames[cur]",
+        "cur === \"roots\""
+      ],
+      "line": 11176
+    },
+    {
+      "view": "actions",
+      "type": "heatmap",
+      "title": "Root cause by function",
+      "conditions": [
+        "tabNames[cur]",
+        "cur === \"roots\""
+      ],
+      "line": 11178
+    }
+  ]
+}

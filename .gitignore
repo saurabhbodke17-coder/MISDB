@@ -1,0 +1,82 @@
+# Local environment files and credentials. Commit only the explicit example templates.
+.env
+.env.*
+!.env.example
+!.env.*.example
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+backend/.env
+local-access.txt
+.npmrc
+.pypirc
+
+# Private keys, certificates and service account credentials.
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+firebase-adminsdk*.json
+*service-account*.json
+*-credentials.json
+credentials.json
+secrets.json
+
+# Production exports, database dumps and local database files.
+*.dump
+*.backup
+*.bak
+*.sql.gz
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+LMS_full_backup.dump
+data/
+backups/
+.runtime/
+lms_schema_summary.json
+docs/production-import*
+docs/production-chart-validation.json
+
+# Python environments, bytecode, tests and tool caches.
+.venv/
+venv/
+**/.venv/
+**/venv/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+**/.pytest_cache/
+.ruff_cache/
+**/.ruff_cache/
+.mypy_cache/
+*.py[cod]
+.coverage
+coverage.xml
+
+# JavaScript dependencies and generated builds.
+node_modules/
+**/node_modules/
+frontend/dist/
+dist/
+build/
+.vite/
+**/.vite/
+frontend/tsconfig.tsbuildinfo
+
+# Generated local reports and spreadsheet-build artifacts.
+reports/
+outputs/
+.workbooks/
+*.inspect.ndjson
+
+# Logs and operating-system/editor artifacts.
+*.log
+npm-debug.log*
+yarn-debug.log*
+.DS_Store
+Thumbs.db

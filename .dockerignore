@@ -1,0 +1,13 @@
+.runtime
+**/.venv
+**/node_modules
+**/dist
+**/.env
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+*.dump
+Polaris MIS Command Center.html
+*.log
+local-access.txt
+.git
