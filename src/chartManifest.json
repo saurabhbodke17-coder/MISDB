@@ -1,0 +1,1609 @@
+{
+  "version": 1,
+  "sections": {
+    "internship": {
+      "tabs": [
+        {
+          "id": "overview",
+          "label": "Overview",
+          "source": "internship_students"
+        },
+        {
+          "id": "students",
+          "label": "Students",
+          "source": "internship_students"
+        },
+        {
+          "id": "delivery",
+          "label": "Class delivery",
+          "source": "internship_sessions"
+        },
+        {
+          "id": "placements",
+          "label": "Companies & roles",
+          "source": "internship_placements"
+        },
+        {
+          "id": "coverage",
+          "label": "Data availability",
+          "source": null,
+          "missing": null
+        }
+      ],
+      "charts": [
+        {
+          "id": "internship-1",
+          "tab": "overview",
+          "title": "Internship enrollment status",
+          "type": "stacked",
+          "provider": "internship.enrollment_status",
+          "reason": null,
+          "source": "internship_students"
+        },
+        {
+          "id": "internship-2",
+          "tab": "overview",
+          "title": "Students by internship batch",
+          "type": "bar",
+          "provider": "internship.batch_strength",
+          "reason": null,
+          "source": "internship_students"
+        },
+        {
+          "id": "internship-3",
+          "tab": "overview",
+          "title": "Internship enrollment timeline",
+          "type": "line",
+          "provider": "internship.joined",
+          "reason": null,
+          "source": "internship_students"
+        },
+        {
+          "id": "internship-4",
+          "tab": "overview",
+          "title": "Academic attendance context",
+          "type": "hbar",
+          "provider": "internship.attendance_band",
+          "reason": null,
+          "source": "internship_students"
+        },
+        {
+          "id": "internship-5",
+          "tab": "overview",
+          "title": "Internship session status",
+          "type": "stacked",
+          "provider": "internship.delivery_status",
+          "reason": null,
+          "source": "internship_sessions"
+        },
+        {
+          "id": "internship-6",
+          "tab": "overview",
+          "title": "Session start evidence",
+          "type": "stacked",
+          "provider": "internship.timing",
+          "reason": null,
+          "source": "internship_sessions"
+        },
+        {
+          "id": "internship-7",
+          "tab": "students",
+          "title": "Active and dropped students by batch",
+          "type": "bar",
+          "provider": "internship.batch_strength",
+          "reason": null,
+          "source": "internship_students"
+        },
+        {
+          "id": "internship-8",
+          "tab": "students",
+          "title": "Academic attendance of internship students",
+          "type": "hbar",
+          "provider": "internship.attendance_band",
+          "reason": null,
+          "source": "internship_students"
+        },
+        {
+          "id": "internship-9",
+          "tab": "students",
+          "title": "Students added over time",
+          "type": "line",
+          "provider": "internship.joined",
+          "reason": null,
+          "source": "internship_students"
+        },
+        {
+          "id": "internship-10",
+          "tab": "delivery",
+          "title": "Scheduled vs completed sessions",
+          "type": "line",
+          "provider": "internship.delivery_trend",
+          "reason": null,
+          "source": "internship_sessions"
+        },
+        {
+          "id": "internship-11",
+          "tab": "delivery",
+          "title": "Delivery status",
+          "type": "stacked",
+          "provider": "internship.delivery_status",
+          "reason": null,
+          "source": "internship_sessions"
+        },
+        {
+          "id": "internship-12",
+          "tab": "delivery",
+          "title": "Completion by internship batch",
+          "type": "hbar",
+          "provider": "internship.completion_by_batch",
+          "reason": null,
+          "source": "internship_sessions"
+        },
+        {
+          "id": "internship-13",
+          "tab": "delivery",
+          "title": "On-time, delayed and missing telemetry",
+          "type": "stacked",
+          "provider": "internship.timing",
+          "reason": null,
+          "source": "internship_sessions"
+        },
+        {
+          "id": "internship-14",
+          "tab": "delivery",
+          "title": "Top subjects by sessions",
+          "type": "hbar",
+          "provider": "internship.subjects",
+          "reason": null,
+          "source": "internship_sessions"
+        },
+        {
+          "id": "internship-15",
+          "tab": "delivery",
+          "title": "Top mentors by sessions",
+          "type": "hbar",
+          "provider": "internship.mentors",
+          "reason": null,
+          "source": "internship_sessions"
+        },
+        {
+          "id": "internship-16",
+          "tab": "coverage",
+          "title": "Internship attendance",
+          "type": "bar",
+          "provider": null,
+          "reason": "The connected production source contains no attendance records against internship-batch sessions. Academic attendance is shown only as contextual evidence for the same students.",
+          "source": null
+        },
+        {
+          "id": "internship-17",
+          "tab": "coverage",
+          "title": "Internship assignments and evaluations",
+          "type": "bar",
+          "provider": null,
+          "reason": "No assignments, submissions or graded evaluations are linked to internship batches in the connected production source.",
+          "source": null
+        },
+        {
+          "id": "internship-18",
+          "tab": "coverage",
+          "title": "Internship placements by company",
+          "type": "bar",
+          "provider": "production.companies",
+          "reason": null,
+          "source": "internship_placements"
+        },
+        {
+          "id": "internship-19",
+          "tab": "coverage",
+          "title": "Reviews, vivas and milestones",
+          "type": "bar",
+          "provider": null,
+          "reason": "Internship-specific reviews are not linked to these placements. Production OJT evaluations are available separately under OJT & Industry Projects → Reviews & vivas.",
+          "source": null
+        },
+        {
+          "id": "internship-companies",
+          "tab": "placements",
+          "title": "Internship placements by company",
+          "type": "hbar",
+          "provider": "production.companies",
+          "source": "internship_placements",
+          "reason": null
+        }
+      ]
+    },
+    "exceptions": {
+      "tabs": [
+        {
+          "id": "list",
+          "label": "Exceptions",
+          "source": "data_quality"
+        },
+        {
+          "id": "students",
+          "label": "Student risk",
+          "source": "students"
+        },
+        {
+          "id": "rules",
+          "label": "Rules",
+          "source": null,
+          "missing": null
+        }
+      ],
+      "charts": [
+        {
+          "id": "exceptions-1",
+          "tab": "list",
+          "title": "By area",
+          "type": "hbar",
+          "provider": "quality.area",
+          "reason": null,
+          "source": "data_quality"
+        },
+        {
+          "id": "exceptions-2",
+          "tab": "list",
+          "title": "Exceptions by severity",
+          "type": "stacked",
+          "provider": "quality.severity",
+          "reason": null,
+          "source": "data_quality"
+        },
+        {
+          "id": "exceptions-3",
+          "tab": "students",
+          "title": "Flags by rule",
+          "type": "hbar",
+          "provider": "risk.rules",
+          "reason": null,
+          "source": "students"
+        }
+      ]
+    },
+    "attendance": {
+      "tabs": [
+        {
+          "id": "daily",
+          "label": "Daily attendance",
+          "source": "attendance"
+        },
+        {
+          "id": "weekly",
+          "label": "Weekly attendance",
+          "source": "attendance"
+        },
+        {
+          "id": "matrix",
+          "label": "Student matrix",
+          "source": "students"
+        },
+        {
+          "id": "interv",
+          "label": "Intervention tracker",
+          "source": "interventions"
+        }
+      ],
+      "charts": [
+        {
+          "id": "attendance-1",
+          "tab": "daily",
+          "title": "Daily attendance",
+          "type": "line",
+          "provider": "attendance.daily",
+          "reason": null,
+          "source": "attendance"
+        },
+        {
+          "id": "attendance-2",
+          "tab": "daily",
+          "title": "Daily absence count",
+          "type": "bar",
+          "provider": "attendance.absences",
+          "reason": null,
+          "source": "attendance"
+        },
+        {
+          "id": "attendance-3",
+          "tab": "weekly",
+          "title": "Weekly attendance",
+          "type": "line",
+          "provider": "attendance.weekly",
+          "reason": null,
+          "source": "attendance"
+        },
+        {
+          "id": "attendance-4",
+          "tab": "weekly",
+          "title": "Weekly heatmap · batch × week",
+          "type": "heatmap",
+          "provider": "attendance.heatmap",
+          "reason": null,
+          "source": "attendance"
+        },
+        {
+          "id": "attendance-5",
+          "tab": "matrix",
+          "title": "Student attendance matrix",
+          "type": "heatmap",
+          "provider": "attendance.student_matrix",
+          "reason": null,
+          "source": "students"
+        }
+      ]
+    },
+    "sla": {
+      "tabs": [
+        {
+          "id": "daily",
+          "label": "Daily delivery",
+          "source": "sessions"
+        },
+        {
+          "id": "timetable",
+          "label": "Timetable adherence",
+          "source": "sessions"
+        },
+        {
+          "id": "batch",
+          "label": "Batch SLA",
+          "source": "sessions"
+        },
+        {
+          "id": "mentor",
+          "label": "Mentor SLA",
+          "source": "mentors"
+        },
+        {
+          "id": "subject",
+          "label": "Subject-wise",
+          "source": "sessions"
+        },
+        {
+          "id": "log",
+          "label": "Exception log",
+          "source": "sessions"
+        }
+      ],
+      "charts": [
+        {
+          "id": "sla-1",
+          "tab": "daily",
+          "title": "Scheduled vs delivered, by day",
+          "type": "bar",
+          "provider": "delivery.daily",
+          "reason": null,
+          "source": "sessions"
+        },
+        {
+          "id": "sla-2",
+          "tab": "daily",
+          "title": "Daily SLA compliance",
+          "type": "line",
+          "provider": "delivery.daily_sla",
+          "reason": null,
+          "source": "sessions"
+        },
+        {
+          "id": "sla-3",
+          "tab": "timetable",
+          "title": "Weekly timetable adherence",
+          "type": "heatmap",
+          "provider": "delivery.heatmap",
+          "reason": null,
+          "source": "sessions"
+        },
+        {
+          "id": "sla-4",
+          "tab": "timetable",
+          "title": "SLA by time slot",
+          "type": "hbar",
+          "provider": "delivery.slot",
+          "reason": null,
+          "source": "sessions"
+        },
+        {
+          "id": "sla-5",
+          "tab": "timetable",
+          "title": "SLA by weekday",
+          "type": "hbar",
+          "provider": "delivery.weekday",
+          "reason": null,
+          "source": "sessions"
+        },
+        {
+          "id": "sla-6",
+          "tab": "batch",
+          "title": "Batch-wise SLA ranking",
+          "type": "hbar",
+          "provider": "delivery.batch",
+          "reason": null,
+          "source": "sessions"
+        },
+        {
+          "id": "sla-7",
+          "tab": "mentor",
+          "title": "Mentor-wise SLA ranking",
+          "type": "hbar",
+          "provider": "delivery.mentor",
+          "reason": null,
+          "source": "sessions"
+        },
+        {
+          "id": "sla-8",
+          "tab": "subject",
+          "title": "Subject × week SLA",
+          "type": "heatmap",
+          "provider": "delivery.subject_heatmap",
+          "reason": null,
+          "source": "sessions"
+        }
+      ]
+    },
+    "academic": {
+      "tabs": [
+        {
+          "id": "overview",
+          "label": "Overview",
+          "source": "students"
+        },
+        {
+          "id": "subjects",
+          "label": "Subjects & batches",
+          "source": "results"
+        },
+        {
+          "id": "risk",
+          "label": "Students requiring intervention",
+          "source": "students"
+        },
+        {
+          "id": "backlog",
+          "label": "Assessment backlog",
+          "source": "assignments"
+        }
+      ],
+      "charts": [
+        {
+          "id": "academic-1",
+          "tab": "overview",
+          "title": "Score distribution",
+          "type": "bar",
+          "provider": "assessment.histogram",
+          "reason": null,
+          "source": "results"
+        },
+        {
+          "id": "academic-2",
+          "tab": "overview",
+          "title": "Semester performance trend",
+          "type": "line",
+          "provider": "assessment.semester",
+          "reason": null,
+          "source": "results"
+        },
+        {
+          "id": "academic-3",
+          "tab": "overview",
+          "title": "Attendance vs performance",
+          "type": "scatter",
+          "provider": "assessment.scatter",
+          "reason": null,
+          "source": "students"
+        },
+        {
+          "id": "academic-4",
+          "tab": "overview",
+          "title": "Batch comparison · average score",
+          "type": "hbar",
+          "provider": "assessment.batch_score",
+          "reason": null,
+          "source": "results"
+        },
+        {
+          "id": "academic-5",
+          "tab": "overview",
+          "title": "Batch comparison · pass rate",
+          "type": "hbar",
+          "provider": "assessment.batch_pass",
+          "reason": null,
+          "source": "results"
+        },
+        {
+          "id": "academic-6",
+          "tab": "subjects",
+          "title": "Subject-wise performance heatmap",
+          "type": "heatmap",
+          "provider": "assessment.subject_heatmap",
+          "reason": null,
+          "source": "results"
+        },
+        {
+          "id": "academic-7",
+          "tab": "risk",
+          "title": "Student attendance trends",
+          "type": "spark",
+          "provider": "attendance.student_trends",
+          "reason": null,
+          "source": "students"
+        }
+      ]
+    },
+    "mentors": {
+      "tabs": [
+        {
+          "id": "score",
+          "label": "Scorecard",
+          "source": "mentors"
+        },
+        {
+          "id": "trend",
+          "label": "Weekly trend",
+          "source": "sessions"
+        },
+        {
+          "id": "workload",
+          "label": "Workload",
+          "source": "sessions"
+        },
+        {
+          "id": "feedback",
+          "label": "Feedback",
+          "source": "mentor_feedback"
+        },
+        {
+          "id": "exceptions",
+          "label": "Exception log",
+          "source": "data_quality"
+        }
+      ],
+      "charts": [
+        {
+          "id": "mentors-1",
+          "tab": "trend",
+          "title": "Weekly on-time delivery",
+          "type": "line",
+          "provider": "delivery.weekly",
+          "reason": null,
+          "source": "sessions"
+        },
+        {
+          "id": "mentors-2",
+          "tab": "trend",
+          "title": "Weekly classes: delivered vs breaches",
+          "type": "bar",
+          "provider": "delivery.weekly_outcomes",
+          "reason": null,
+          "source": "sessions"
+        },
+        {
+          "id": "mentors-3",
+          "tab": "workload",
+          "title": "Workload by mentor and batch",
+          "type": "bar",
+          "provider": "delivery.workload",
+          "reason": null,
+          "source": "sessions"
+        },
+        {
+          "id": "mentors-4",
+          "tab": "feedback",
+          "title": "Ranking by mentor · average feedback rating",
+          "type": "hbar",
+          "provider": "feedback.ranking",
+          "reason": null,
+          "source": "mentor_feedback",
+          "plot_limit": 5
+        },
+        {
+          "id": "mentors-5",
+          "tab": "feedback",
+          "title": "Feedback distribution · all mentors in view",
+          "type": "bar",
+          "provider": "feedback.all",
+          "reason": null,
+          "source": "feedback"
+        }
+      ]
+    },
+    "operations": {
+      "tabs": [
+        {
+          "id": "planned",
+          "label": "Planned vs completed",
+          "source": "tasks"
+        },
+        {
+          "id": "trend",
+          "label": "On-time trend",
+          "source": "tasks"
+        },
+        {
+          "id": "overdue",
+          "label": "Overdue by function & owner",
+          "source": "tasks"
+        },
+        {
+          "id": "aging",
+          "label": "Delay aging",
+          "source": "tasks"
+        },
+        {
+          "id": "funnel",
+          "label": "Bottleneck funnel",
+          "source": "tasks"
+        },
+        {
+          "id": "blocked",
+          "label": "Blocked or halted",
+          "source": "tasks"
+        },
+        {
+          "id": "deps",
+          "label": "Dependencies & critical path",
+          "source": "tasks"
+        },
+        {
+          "id": "gantt",
+          "label": "Gantt timeline",
+          "source": "tasks"
+        },
+        {
+          "id": "register",
+          "label": "Task register",
+          "source": "tasks"
+        }
+      ],
+      "charts": [
+        {
+          "id": "operations-1",
+          "tab": "planned",
+          "title": "Planned vs completed milestones, by process",
+          "type": "bar",
+          "provider": null,
+          "reason": "The connected production source has no operational process definitions, ordered stages, dependencies or historical milestone plans. New tasks alone do not establish a process bottleneck or critical path.",
+          "source": "tasks"
+        },
+        {
+          "id": "operations-2",
+          "tab": "trend",
+          "title": "On-time task completion trend",
+          "type": "line",
+          "provider": "tasks.on_time",
+          "reason": null,
+          "source": "tasks"
+        },
+        {
+          "id": "operations-3",
+          "tab": "trend",
+          "title": "Tasks due vs completed on time, per week",
+          "type": "bar",
+          "provider": "tasks.due_completed",
+          "reason": null,
+          "source": "tasks"
+        },
+        {
+          "id": "operations-4",
+          "tab": "overdue",
+          "title": "Overdue tasks by function",
+          "type": "bar",
+          "provider": "tasks.overdue_function",
+          "reason": null,
+          "source": "tasks"
+        },
+        {
+          "id": "operations-5",
+          "tab": "overdue",
+          "title": "Overdue tasks by owner",
+          "type": "hbar",
+          "provider": "tasks.overdue_owner",
+          "reason": null,
+          "source": "tasks"
+        },
+        {
+          "id": "operations-6",
+          "tab": "aging",
+          "title": "Delay aging buckets",
+          "type": "bar",
+          "provider": "tasks.aging",
+          "reason": null,
+          "source": "tasks"
+        },
+        {
+          "id": "operations-7",
+          "tab": "aging",
+          "title": "Escalation levels",
+          "type": "hbar",
+          "provider": "tasks.escalation",
+          "reason": null,
+          "source": "tasks"
+        },
+        {
+          "id": "operations-8",
+          "tab": "funnel",
+          "title": "Process bottleneck funnel",
+          "type": "funnel",
+          "provider": null,
+          "reason": "The connected production source has no operational process definitions, ordered stages, dependencies or historical milestone plans. New tasks alone do not establish a process bottleneck or critical path.",
+          "source": "tasks"
+        },
+        {
+          "id": "operations-9",
+          "tab": "funnel",
+          "title": "Where work is stuck",
+          "type": "hbar",
+          "provider": null,
+          "reason": "The connected production source has no operational process definitions, ordered stages, dependencies or historical milestone plans. New tasks alone do not establish a process bottleneck or critical path.",
+          "source": "tasks"
+        },
+        {
+          "id": "operations-10",
+          "tab": "gantt",
+          "title": "Milestone timeline",
+          "type": "gantt",
+          "provider": "tasks.gantt",
+          "reason": null,
+          "source": "tasks"
+        }
+      ]
+    },
+    "dq": {
+      "tabs": [
+        {
+          "id": "pareto",
+          "label": "Error categories",
+          "source": "data_quality"
+        },
+        {
+          "id": "trend",
+          "label": "Trend",
+          "source": "data_quality"
+        },
+        {
+          "id": "source",
+          "label": "By source",
+          "source": "data_quality"
+        },
+        {
+          "id": "log",
+          "label": "Correction log",
+          "source": "corrections"
+        }
+      ],
+      "charts": [
+        {
+          "id": "dq-1",
+          "tab": "pareto",
+          "title": "Pareto of error categories",
+          "type": "pareto",
+          "provider": "quality.pareto",
+          "reason": null,
+          "source": "data_quality"
+        },
+        {
+          "id": "dq-2",
+          "tab": "pareto",
+          "title": "Repeat errors by category and source",
+          "type": "hbar",
+          "provider": null,
+          "reason": "No repeated-audit history or recurrence identifiers were supplied. Current findings cannot establish repeat errors.",
+          "source": null
+        },
+        {
+          "id": "dq-3",
+          "tab": "trend",
+          "title": "Weekly error rate",
+          "type": "line",
+          "provider": null,
+          "reason": "No audit samples, records-checked denominators or first-pass acceptance history exist in the connected source. An error count is not an error rate.",
+          "source": null
+        },
+        {
+          "id": "dq-4",
+          "tab": "trend",
+          "title": "Weekly first-time-right",
+          "type": "line",
+          "provider": null,
+          "reason": "No audit samples, records-checked denominators or first-pass acceptance history exist in the connected source. An error count is not an error rate.",
+          "source": null
+        },
+        {
+          "id": "dq-5",
+          "tab": "source",
+          "title": "Error rate by source system",
+          "type": "hbar",
+          "provider": null,
+          "reason": "No audit samples, records-checked denominators or first-pass acceptance history exist in the connected source. An error count is not an error rate.",
+          "source": null
+        }
+      ]
+    },
+    "tech": {
+      "tabs": [
+        {
+          "id": "overview",
+          "label": "System health",
+          "source": null,
+          "missing": "This view requires source records not supplied in the LMS dump."
+        },
+        {
+          "id": "incidents",
+          "label": "Incident log",
+          "source": "incidents"
+        },
+        {
+          "id": "integrations",
+          "label": "Integrations",
+          "source": null,
+          "missing": "This view requires source records not supplied in the LMS dump."
+        },
+        {
+          "id": "releases",
+          "label": "Releases & bugs",
+          "source": null,
+          "missing": "This view requires source records not supplied in the LMS dump."
+        },
+        {
+          "id": "drill",
+          "label": "System drill-down",
+          "source": null,
+          "missing": "This view requires source records not supplied in the LMS dump."
+        }
+      ],
+      "charts": [
+        {
+          "id": "tech-1",
+          "tab": "overview",
+          "title": "Service availability trend",
+          "type": "line",
+          "provider": null,
+          "reason": "No timestamped service uptime or monitoring samples.",
+          "source": null
+        },
+        {
+          "id": "tech-2",
+          "tab": "overview",
+          "title": "System availability sparklines",
+          "type": "spark",
+          "provider": null,
+          "reason": "No per-system availability samples.",
+          "source": null
+        },
+        {
+          "id": "tech-3",
+          "tab": "integrations",
+          "title": "Integration success rate by week",
+          "type": "line",
+          "provider": null,
+          "reason": "No integration transaction outcomes or valid-transaction denominator.",
+          "source": null
+        },
+        {
+          "id": "tech-4",
+          "tab": "integrations",
+          "title": "Success rate in period",
+          "type": "hbar",
+          "provider": null,
+          "reason": "No integration transaction outcomes or valid-transaction denominator.",
+          "source": null
+        },
+        {
+          "id": "tech-5",
+          "tab": "releases",
+          "title": "Release status distribution",
+          "type": "stacked",
+          "provider": null,
+          "reason": "No releases or software defect lifecycle records.",
+          "source": null
+        },
+        {
+          "id": "tech-6",
+          "tab": "drill",
+          "title": "System · daily availability",
+          "type": "line",
+          "provider": null,
+          "reason": "No per-system daily uptime telemetry.",
+          "source": null
+        }
+      ]
+    },
+    "experience": {
+      "tabs": [
+        {
+          "id": "student",
+          "label": "Student communication",
+          "source": "announcements"
+        },
+        {
+          "id": "parent",
+          "label": "Parent communication",
+          "source": "parents"
+        },
+        {
+          "id": "sat",
+          "label": "Satisfaction",
+          "source": "feedback"
+        },
+        {
+          "id": "resolution",
+          "label": "Issue resolution",
+          "source": "concerns"
+        }
+      ],
+      "charts": [
+        {
+          "id": "experience-1",
+          "tab": "student",
+          "title": "Communication volume by channel",
+          "type": "bar",
+          "provider": "communications.student",
+          "reason": null,
+          "source": "announcements"
+        },
+        {
+          "id": "experience-2",
+          "tab": "student",
+          "title": "Weekly volume and acknowledgement",
+          "type": "line",
+          "provider": "communications.weekly_student",
+          "reason": null,
+          "source": "announcements"
+        },
+        {
+          "id": "experience-3",
+          "tab": "parent",
+          "title": "Communication volume by channel",
+          "type": "bar",
+          "provider": "communications.parent",
+          "reason": null,
+          "source": "parents"
+        },
+        {
+          "id": "experience-4",
+          "tab": "parent",
+          "title": "Weekly volume and acknowledgement",
+          "type": "line",
+          "provider": "communications.weekly_parent",
+          "reason": null,
+          "source": "parents"
+        },
+        {
+          "id": "experience-5",
+          "tab": "sat",
+          "title": "Satisfaction trend",
+          "type": "line",
+          "provider": "feedback.trend",
+          "reason": null,
+          "source": "feedback"
+        },
+        {
+          "id": "experience-6",
+          "tab": "sat",
+          "title": "Common feedback themes",
+          "type": "hbar",
+          "provider": null,
+          "reason": "The connected source contains question-level responses, not validated feedback-theme classifications. Free-text themes are not fabricated.",
+          "source": null
+        },
+        {
+          "id": "experience-7",
+          "tab": "resolution",
+          "title": "Student concerns by category",
+          "type": "hbar",
+          "provider": "production.concern_category",
+          "reason": null,
+          "source": "concerns"
+        },
+        {
+          "id": "experience-8",
+          "tab": "resolution",
+          "title": "Student concerns raised by week",
+          "type": "line",
+          "provider": "production.concern_weekly",
+          "reason": null,
+          "source": "concerns"
+        }
+      ]
+    },
+    "tickets": {
+      "tabs": [
+        {
+          "id": "queue",
+          "label": "Student concerns",
+          "source": "concerns"
+        },
+        {
+          "id": "breach",
+          "label": "Breaching SLA",
+          "source": "support"
+        },
+        {
+          "id": "analytics",
+          "label": "Analytics",
+          "source": "support"
+        },
+        {
+          "id": "feedback",
+          "label": "Resolved & feedback",
+          "source": "support"
+        }
+      ],
+      "charts": [
+        {
+          "id": "tickets-1",
+          "tab": "analytics",
+          "title": "Student concerns by category",
+          "type": "hbar",
+          "provider": "production.concern_category",
+          "reason": null,
+          "source": "concerns"
+        },
+        {
+          "id": "tickets-2",
+          "tab": "analytics",
+          "title": "Student concerns raised by week",
+          "type": "line",
+          "provider": "production.concern_weekly",
+          "reason": null,
+          "source": "concerns"
+        },
+        {
+          "id": "tickets-3",
+          "tab": "analytics",
+          "title": "Open tickets by category",
+          "type": "hbar",
+          "provider": "support.open_category",
+          "reason": null,
+          "source": "support"
+        },
+        {
+          "id": "tickets-4",
+          "tab": "analytics",
+          "title": "Aging buckets",
+          "type": "bar",
+          "provider": "support.aging",
+          "reason": null,
+          "source": "support"
+        },
+        {
+          "id": "tickets-5",
+          "tab": "analytics",
+          "title": "Open tickets by batch",
+          "type": "hbar",
+          "provider": "support.batch",
+          "reason": null,
+          "source": "support"
+        },
+        {
+          "id": "tickets-6",
+          "tab": "analytics",
+          "title": "Open tickets by owner",
+          "type": "hbar",
+          "provider": "support.owner",
+          "reason": null,
+          "source": "support"
+        }
+      ]
+    },
+    "calendar": {
+      "tabs": [
+        {
+          "id": "calendar",
+          "label": "Master calendar",
+          "source": "calendar"
+        },
+        {
+          "id": "conflicts",
+          "label": "Conflict matrix",
+          "source": "sessions"
+        },
+        {
+          "id": "disruptions",
+          "label": "Disruptions",
+          "source": "sessions"
+        },
+        {
+          "id": "makeup",
+          "label": "Make-up tracker",
+          "source": "actions"
+        },
+        {
+          "id": "risk",
+          "label": "Deadline risk",
+          "source": "calendar"
+        }
+      ],
+      "charts": [
+        {
+          "id": "calendar-1",
+          "tab": "conflicts",
+          "title": "Scheduling conflict matrix",
+          "type": "heatmap",
+          "provider": "calendar.conflicts",
+          "reason": null,
+          "source": "sessions"
+        },
+        {
+          "id": "calendar-2",
+          "tab": "disruptions",
+          "title": "Disruption trend",
+          "type": "bar",
+          "provider": null,
+          "reason": "No disruption/cancellation reason records or approved-versus-unplanned cancellation flags. Past scheduled sessions are not automatically classified as missed.",
+          "source": null
+        },
+        {
+          "id": "calendar-3",
+          "tab": "disruptions",
+          "title": "Impact by batch",
+          "type": "hbar",
+          "provider": null,
+          "reason": "No disruption/cancellation reason records or approved-versus-unplanned cancellation flags. Past scheduled sessions are not automatically classified as missed.",
+          "source": null
+        },
+        {
+          "id": "calendar-4",
+          "tab": "disruptions",
+          "title": "Reasons",
+          "type": "hbar",
+          "provider": null,
+          "reason": "No disruption/cancellation reason records or approved-versus-unplanned cancellation flags. Past scheduled sessions are not automatically classified as missed.",
+          "source": null
+        }
+      ]
+    },
+    "assess": {
+      "tabs": [
+        {
+          "id": "lifecycle",
+          "label": "Lifecycle",
+          "source": "assignments"
+        },
+        {
+          "id": "readiness",
+          "label": "Readiness checklist",
+          "source": null,
+          "missing": "This view requires source records not supplied in the LMS dump."
+        },
+        {
+          "id": "matrix",
+          "label": "Semester progress",
+          "source": "assignments"
+        },
+        {
+          "id": "overdue",
+          "label": "Overdue evaluations",
+          "source": "assignments"
+        },
+        {
+          "id": "timeline",
+          "label": "Publication timeline",
+          "source": "examinations"
+        },
+        {
+          "id": "improve",
+          "label": "Improvement & corrections",
+          "source": "corrections"
+        }
+      ],
+      "charts": [
+        {
+          "id": "assess-1",
+          "tab": "lifecycle",
+          "title": "Assessments by lifecycle stage",
+          "type": "funnel",
+          "provider": null,
+          "reason": "Assignment approval and grading are present, but examination paper preparation, review, platform readiness, marks verification and result-publication stages are absent. The assignment register remains available.",
+          "source": null
+        },
+        {
+          "id": "assess-2",
+          "tab": "lifecycle",
+          "title": "Evaluation progress",
+          "type": "hbar",
+          "provider": "assessment.evaluation",
+          "reason": null,
+          "source": "assignments"
+        },
+        {
+          "id": "assess-3",
+          "tab": "matrix",
+          "title": "Semester-wise progress matrix",
+          "type": "heatmap",
+          "provider": "assessment.progress_heatmap",
+          "reason": null,
+          "source": "assignments"
+        },
+        {
+          "id": "assess-4",
+          "tab": "timeline",
+          "title": "Cumulative assessments conducted vs published",
+          "type": "line",
+          "provider": null,
+          "reason": "Examination dates exist, but actual conducted and result-publication timestamps are absent. Grading time is not publication time.",
+          "source": null
+        }
+      ]
+    },
+    "compliance": {
+      "tabs": [
+        {
+          "id": "tracker",
+          "label": "Tracker",
+          "source": "compliance"
+        },
+        {
+          "id": "calendar",
+          "label": "Compliance calendar",
+          "source": "compliance"
+        },
+        {
+          "id": "breach",
+          "label": "Deadline breach log",
+          "source": "compliance"
+        },
+        {
+          "id": "funnel",
+          "label": "Submission funnel",
+          "source": "compliance"
+        }
+      ],
+      "charts": [
+        {
+          "id": "compliance-1",
+          "tab": "funnel",
+          "title": "Submission-to-approval funnel",
+          "type": "funnel",
+          "provider": null,
+          "reason": "No historical university submission, acknowledgement or approval milestones were supplied. New MIS compliance items track follow-up, not a fabricated university lifecycle.",
+          "source": null
+        },
+        {
+          "id": "compliance-2",
+          "tab": "funnel",
+          "title": "Completion by category",
+          "type": "hbar",
+          "provider": "compliance.category",
+          "reason": null,
+          "source": "compliance"
+        }
+      ]
+    },
+    "ojt": {
+      "tabs": [
+        {
+          "id": "overview",
+          "label": "Overview",
+          "source": "ojt_allocations"
+        },
+        {
+          "id": "projects",
+          "label": "Projects",
+          "source": "ojt_allocations"
+        },
+        {
+          "id": "delayed",
+          "label": "Milestones",
+          "source": "ojt_allocations"
+        },
+        {
+          "id": "students",
+          "label": "Student progress",
+          "source": "ojt_allocations"
+        },
+        {
+          "id": "reviews",
+          "label": "Reviews & vivas",
+          "source": "ojt_evaluations"
+        },
+        {
+          "id": "outcomes",
+          "label": "Outcomes",
+          "source": "internship_placements"
+        }
+      ],
+      "charts": [
+        {
+          "id": "ojt-1",
+          "tab": "overview",
+          "title": "Recorded allocation milestones",
+          "type": "bar",
+          "provider": "production.milestones",
+          "reason": null,
+          "source": "ojt_allocations"
+        },
+        {
+          "id": "ojt-2",
+          "tab": "overview",
+          "title": "OJT allocation status",
+          "type": "stacked",
+          "provider": "production.allocation_status",
+          "reason": null,
+          "source": "ojt_allocations"
+        },
+        {
+          "id": "ojt-3",
+          "tab": "overview",
+          "title": "OJT allocations by batch",
+          "type": "hbar",
+          "provider": "production.allocations_by_batch",
+          "reason": null,
+          "source": "ojt_allocations"
+        },
+        {
+          "id": "ojt-4",
+          "tab": "overview",
+          "title": "Demo readiness",
+          "type": "stacked",
+          "provider": null,
+          "reason": "No project demo-readiness checklist or review evidence.",
+          "source": null
+        },
+        {
+          "id": "ojt-5",
+          "tab": "reviews",
+          "title": "Mentor review compliance",
+          "type": "hbar",
+          "provider": null,
+          "reason": "Production has mentor weekly reports, but a validated mapping of expected reviews to submitted reviews is still required for a compliance denominator.",
+          "source": null
+        },
+        {
+          "id": "ojt-6",
+          "tab": "reviews",
+          "title": "OJT evaluation completion · recorded rows",
+          "type": "bar",
+          "provider": "production.evaluation_status",
+          "reason": null,
+          "source": "ojt_evaluations"
+        },
+        {
+          "id": "ojt-7",
+          "tab": "outcomes",
+          "title": "Internship placements by company",
+          "type": "hbar",
+          "provider": "production.companies",
+          "reason": null,
+          "source": "internship_placements"
+        },
+        {
+          "id": "ojt-8",
+          "tab": "outcomes",
+          "title": "Outcomes by project type",
+          "type": "bar",
+          "provider": null,
+          "reason": "Production has allocations and evaluations, but no verified project-type outcome definition. Allocation status is not a completion outcome.",
+          "source": null
+        },
+        {
+          "id": "ojt-milestones",
+          "tab": "delayed",
+          "title": "Recorded allocation milestones",
+          "type": "bar",
+          "provider": "production.milestones",
+          "source": "ojt_allocations",
+          "reason": null
+        }
+      ]
+    },
+    "actions": {
+      "tabs": [
+        {
+          "id": "all",
+          "label": "All actions",
+          "source": "actions"
+        },
+        {
+          "id": "mine",
+          "label": "My actions",
+          "source": "actions"
+        },
+        {
+          "id": "overdue",
+          "label": "Overdue",
+          "source": "actions"
+        },
+        {
+          "id": "critical",
+          "label": "Critical escalations",
+          "source": "actions"
+        },
+        {
+          "id": "today",
+          "label": "Due today",
+          "source": "actions"
+        },
+        {
+          "id": "week",
+          "label": "Due this week",
+          "source": "actions"
+        },
+        {
+          "id": "verify",
+          "label": "Awaiting verification",
+          "source": "actions"
+        },
+        {
+          "id": "reopened",
+          "label": "Reopened",
+          "source": "actions"
+        },
+        {
+          "id": "roots",
+          "label": "Repeat root causes",
+          "source": "actions"
+        },
+        {
+          "id": "closure",
+          "label": "Closure rate",
+          "source": "actions"
+        }
+      ],
+      "charts": [
+        {
+          "id": "actions-1",
+          "tab": "roots",
+          "title": "Repeat root causes",
+          "type": "hbar",
+          "provider": "actions.roots",
+          "reason": null,
+          "source": "actions"
+        },
+        {
+          "id": "actions-2",
+          "tab": "roots",
+          "title": "Root cause by function",
+          "type": "heatmap",
+          "provider": "actions.root_heatmap",
+          "reason": null,
+          "source": "actions"
+        },
+        {
+          "id": "actions-3",
+          "tab": "closure",
+          "title": "Closure rate by owner",
+          "type": "hbar",
+          "provider": "actions.closure_owner",
+          "reason": null,
+          "source": "actions"
+        },
+        {
+          "id": "actions-4",
+          "tab": "closure",
+          "title": "Closure rate by function",
+          "type": "hbar",
+          "provider": "actions.closure_function",
+          "reason": null,
+          "source": "actions"
+        }
+      ]
+    },
+    "command": {
+      "tabs": [],
+      "charts": [
+        {
+          "id": "command-1",
+          "tab": "overview",
+          "title": "Attendance",
+          "type": "line",
+          "provider": "attendance.weekly",
+          "reason": null,
+          "source": null
+        },
+        {
+          "id": "command-2",
+          "tab": "overview",
+          "title": "On-time class delivery",
+          "type": "line",
+          "provider": "delivery.weekly",
+          "reason": null,
+          "source": null
+        },
+        {
+          "id": "command-3",
+          "tab": "overview",
+          "title": "Assessment completion",
+          "type": "line",
+          "provider": "assessment.completion",
+          "reason": null,
+          "source": null
+        },
+        {
+          "id": "command-4",
+          "tab": "overview",
+          "title": "Student academic performance",
+          "type": "line",
+          "provider": "assessment.score",
+          "reason": null,
+          "source": null
+        },
+        {
+          "id": "command-5",
+          "tab": "overview",
+          "title": "SLA compliance",
+          "type": "line",
+          "provider": "support.sla",
+          "reason": null,
+          "source": null
+        },
+        {
+          "id": "command-6",
+          "tab": "overview",
+          "title": "Open vs resolved issues",
+          "type": "line",
+          "provider": "support.open_resolved",
+          "reason": null,
+          "source": null
+        },
+        {
+          "id": "command-7",
+          "tab": "overview",
+          "title": "Overdue operational tasks",
+          "type": "line",
+          "provider": "tasks.overdue_trend",
+          "reason": null,
+          "source": null
+        }
+      ]
+    },
+    "trends": {
+      "tabs": [
+        {
+          "id": "overview",
+          "label": "Trends & Performance",
+          "source": "attendance"
+        }
+      ],
+      "charts": [
+        {
+          "id": "trends-1",
+          "tab": "overview",
+          "title": "Current vs previous period",
+          "type": "line",
+          "provider": "trends.series",
+          "reason": null,
+          "source": null
+        },
+        {
+          "id": "trends-2",
+          "tab": "overview",
+          "title": "Ranking by batch",
+          "type": "hbar",
+          "provider": "trends.batch",
+          "reason": null,
+          "source": null
+        },
+        {
+          "id": "trends-3",
+          "tab": "overview",
+          "title": "Ranking by mentor",
+          "type": "hbar",
+          "plot_limit": 10,
+          "provider": "trends.mentor",
+          "reason": null,
+          "source": null
+        },
+        {
+          "id": "trends-4",
+          "tab": "overview",
+          "title": "By subject",
+          "type": "hbar",
+          "plot_limit": 10,
+          "provider": "trends.subject",
+          "reason": null,
+          "source": null
+        },
+        {
+          "id": "trends-5",
+          "tab": "overview",
+          "title": "Heatmap · batch × week",
+          "type": "heatmap",
+          "provider": "trends.heatmap",
+          "reason": null,
+          "source": null
+        }
+      ]
+    }
+  }
+}
