@@ -9,14 +9,20 @@ pool: ConnectionPool | None = None
 source_pool: ConnectionPool | None = None
 
 
+def _configure_app_connection(conn):
+    conn.execute("SET timezone = 'Asia/Kolkata'; SET statement_timeout = 15000")
+    conn.commit()
+
+
 def start_pool():
     global pool, source_pool
     pool = ConnectionPool(
         settings().database_url,
         min_size=1,
-        max_size=10,
+        max_size=5,
         timeout=10,
-        kwargs={"row_factory": dict_row, "options": "-c timezone=Asia/Kolkata -c statement_timeout=15000"},
+        configure=_configure_app_connection,
+        kwargs={"row_factory": dict_row},
         open=True,
     )
     pool.wait(timeout=15)
@@ -24,7 +30,7 @@ def start_pool():
         source_pool = ConnectionPool(
             settings().source_database_url,
             min_size=1,
-            max_size=10,
+            max_size=5,
             timeout=10,
             kwargs={
                 "row_factory": dict_row,

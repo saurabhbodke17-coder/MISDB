@@ -1,0 +1,27 @@
+.git
+.github
+.kiro
+.runtime
+.workbooks
+.env
+.env.*
+!.env.production.example
+backend/.env
+backend/.venv
+backend/**/__pycache__
+backend/.pytest_cache
+backend/.ruff_cache
+backend/tests
+frontend/node_modules
+frontend/dist
+outputs
+reports
+scripts
+docs
+LMS_full_backup.dump
+lms_schema_summary.json
+local-access.txt
+Polaris MIS Command Center.html
+Polaris MIS Requirements Review.md
+compose.yaml
+.dockerignore
