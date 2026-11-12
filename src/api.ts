@@ -28,10 +28,25 @@ export async function api<T>(url: string, init?: RequestInit): Promise<T> {
   return response.status === 204 ? undefined as T : response.json();
 }
 export const queryString = (values: object) => new URLSearchParams(Object.entries(values).filter(([,v]) => v !== '' && v != null).map(([k,v]) => [k,String(v)])).toString();
+export function istToday(now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const part = (type: string) => parts.find(p => p.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+export function istRange(days: number, now: Date = new Date()): { from_date: string; to_date: string } {
+  const to_date = istToday(now);
+  if (days <= 1) return { from_date: to_date, to_date };
+  const start = new Date(`${to_date}T00:00:00Z`);
+  start.setUTCDate(start.getUTCDate() - days + 1);
+  return { from_date: start.toISOString().slice(0, 10), to_date };
+}
 export function initialFilters(): Filters {
-  const end = new Date(); const start = new Date(end); start.setDate(start.getDate()-27);
-  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  return {from_date: iso(start), to_date: iso(end), batch_id: '', specialization_id: '', semester_id: '', graduation_year_id: '', mentor_id: ''};
+  return { ...istRange(28), batch_id: '', specialization_id: '', semester_id: '', graduation_year_id: '', mentor_id: '' };
 }
 export const humanize = (s: string) => s.replaceAll('_', ' ').replace(/^./, c => c.toUpperCase());
 export function display(value: unknown): string {
