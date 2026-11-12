@@ -1,6 +1,9 @@
+from datetime import UTC, date, datetime
+
 import pytest
 from fastapi import HTTPException
 
+from app import analytics
 from app.analytics import rate
 from app.records import csv_cell
 from app.workflows import validate_transition
@@ -36,3 +39,15 @@ def test_closed_items_must_be_reopened():
     with pytest.raises(HTTPException):
         validate_transition("Verified & closed", "In progress", "EVID-1", "admin")
     validate_transition("Verified & closed", "Reopened", "", "admin")
+
+
+def test_default_filters_use_ist_date(monkeypatch):
+    class FakeDatetime:
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 11, 12, 18, 30, 0, tzinfo=UTC).astimezone(tz)
+
+    monkeypatch.setattr(analytics, "datetime", FakeDatetime)
+    f = analytics.filters()
+    assert f.to_date == date(2026, 11, 13)
+    assert f.from_date == date(2026, 10, 17)

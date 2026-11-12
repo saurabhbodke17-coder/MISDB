@@ -1,5 +1,6 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, model_validator
@@ -9,6 +10,12 @@ from .config import settings
 from .db import one, query
 
 router = APIRouter(tags=["Analytics"])
+IST = ZoneInfo("Asia/Kolkata")
+
+
+def today_ist() -> date:
+    """Return the current calendar date in Indian Standard Time (Asia/Kolkata)."""
+    return datetime.now(IST).date()
 
 
 class Filters(BaseModel):
@@ -36,7 +43,7 @@ def filters(
     graduation_year_id: UUID | None = None,
     mentor_id: UUID | None = None,
 ):
-    end = to_date or date.today()
+    end = to_date or today_ist()
     try:
         return Filters(
             from_date=from_date or end - timedelta(days=27),
