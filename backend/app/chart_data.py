@@ -586,20 +586,8 @@ class ChartContext:
         if domain == "attendance":
             if mode == "overall_daily":
                 sql = f"""WITH scoped_batches AS ({BATCH_SCOPE}),
-                internship_students AS (
-                    SELECT DISTINCT sb.student_id
-                    FROM student_batches sb
-                    JOIN batches b ON b.id = sb.batch_id
-                    JOIN batch_types bt ON bt.id = b.batch_type_id
-                    WHERE bt.name = 'internship' AND sb.status = 'active'
-                ),
-                student_daily AS (
-                    SELECT 
-                        cs.scheduled_start::date AS date,
-                        ar.student_id,
-                        count(*) AS sessions_count,
-                        count(*) FILTER (WHERE ar.status = 'absent') AS absent_sessions,
-                        count(*) FILTER (WHERE ar.status = 'present' OR (%(late_counts_present)s AND ar.status = 'late')) AS present_sessions
+                session_dates AS (
+                    SELECT DISTINCT cs.scheduled_start::date AS date
                     FROM attendance_records ar
                     JOIN class_sessions cs ON cs.id = ar.session_id
                     JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
@@ -609,44 +597,83 @@ class ChartContext:
                       AND bs.batch_id IN (SELECT id FROM scoped_batches)
                       AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
                       AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s)
-                    GROUP BY cs.scheduled_start::date, ar.student_id
+                ),
+                intern_joins AS (
+                    SELECT sb.student_id, min(sb.joined_at::date) AS intern_join_date
+                    FROM student_batches sb
+                    JOIN batches b ON b.id = sb.batch_id
+                    JOIN batch_types bt ON bt.id = b.batch_type_id
+                    WHERE bt.name = 'internship' AND sb.status = 'active'
+                    GROUP BY sb.student_id
+                ),
+                academic_memberships AS (
+                    SELECT sb.student_id, min(bs.start_date) AS start_date
+                    FROM student_batches sb
+                    JOIN batches b ON b.id = sb.batch_id
+                    JOIN batch_types bt ON bt.id = b.batch_type_id
+                    JOIN batch_semesters bs ON bs.batch_id = b.id
+                    JOIN year_specialization_semesters yss ON yss.id = bs.year_specialization_semester_id
+                    WHERE sb.status = 'active'
+                      AND bt.name = 'academics'
+                      AND b.id IN (SELECT id FROM scoped_batches)
+                      AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
+                      AND (%(mentor_id)s::uuid IS NULL OR EXISTS (
+                          SELECT 1 FROM class_sessions mcs 
+                          WHERE mcs.batch_semester_id = bs.id AND mcs.faculty_id = %(mentor_id)s
+                      ))
+                    GROUP BY sb.student_id
+                ),
+                daily_eligible AS (
+                    SELECT 
+                        sd.date,
+                        count(DISTINCT am.student_id) AS total_students
+                    FROM session_dates sd
+                    JOIN academic_memberships am ON am.start_date <= sd.date
+                    LEFT JOIN intern_joins ij ON ij.student_id = am.student_id
+                    WHERE ij.intern_join_date IS NULL OR ij.intern_join_date >= sd.date
+                    GROUP BY sd.date
+                ),
+                daily_absent AS (
+                    SELECT 
+                        cs.scheduled_start::date AS date,
+                        count(DISTINCT ar.student_id) AS absent_students
+                    FROM attendance_records ar
+                    JOIN class_sessions cs ON cs.id = ar.session_id
+                    JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
+                    JOIN year_specialization_semesters yss ON yss.id = bs.year_specialization_semester_id
+                    JOIN academic_memberships am ON am.student_id = ar.student_id AND am.start_date <= cs.scheduled_start::date
+                    LEFT JOIN intern_joins ij ON ij.student_id = ar.student_id
+                    WHERE cs.counts_for_attendance
+                      AND (ar.status = 'absent' OR (NOT %(late_counts_present)s AND ar.status = 'late'))
+                      AND cs.scheduled_start >= %(from_date)s::date AND cs.scheduled_start < %(to_date)s::date + 1
+                      AND bs.batch_id IN (SELECT id FROM scoped_batches)
+                      AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
+                      AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s)
+                      AND (ij.intern_join_date IS NULL OR ij.intern_join_date >= cs.scheduled_start::date)
+                    GROUP BY cs.scheduled_start::date
                 )
                 SELECT 
-                    sd.date,
-                    count(DISTINCT sd.student_id) AS total_students,
-                    count(DISTINCT sd.student_id) FILTER (
-                        WHERE sd.absent_sessions > 0 
-                          AND sd.student_id NOT IN (SELECT student_id FROM internship_students)
-                    ) AS absent_students,
-                    count(DISTINCT sd.student_id) FILTER (
-                        WHERE (sd.absent_sessions = 0 AND sd.present_sessions > 0)
-                           OR sd.student_id IN (SELECT student_id FROM internship_students)
-                    ) AS present_students
-                FROM student_daily sd
-                GROUP BY sd.date
-                ORDER BY sd.date"""
+                    de.date,
+                    de.total_students,
+                    coalesce(da.absent_students, 0) AS absent_students,
+                    greatest(0, de.total_students - coalesce(da.absent_students, 0)) AS present_students
+                FROM daily_eligible de
+                LEFT JOIN daily_absent da ON da.date = de.date
+                ORDER BY de.date"""
                 p = params(f) | metric_settings()
                 raw_rows = query(sql, p)
-
-                active_base_sql = f"""WITH scoped_batches AS ({BATCH_SCOPE})
-                SELECT count(DISTINCT sb.student_id)
-                FROM student_batches sb
-                WHERE sb.status = 'active'
-                  AND sb.batch_id IN (SELECT id FROM scoped_batches)"""
-                active_res = query(active_base_sql, params(f))
-                total_active = active_res[0]["count"] if active_res else 753
-                if not f.batch_id and not f.semester_id and not f.graduation_year_id and not f.specialization_id:
-                    total_active = max(total_active, 753)
 
                 formatted_rows = []
                 total_absent_sum = 0
                 total_present_sum = 0
+                total_eligible_sum = 0
                 for r in raw_rows:
                     absent_cnt = int(r["absent_students"] or 0)
-                    tot_cnt = total_active
+                    tot_cnt = int(r["total_students"] or 0)
                     present_cnt = max(0, tot_cnt - absent_cnt)
                     total_absent_sum += absent_cnt
                     total_present_sum += present_cnt
+                    total_eligible_sum += tot_cnt
                     formatted_rows.append(
                         {
                             "name": str(r["date"]),
@@ -661,16 +688,17 @@ class ChartContext:
                 count_days = len(formatted_rows)
                 avg_absent = round(total_absent_sum / count_days) if count_days else 0
                 avg_present = round(total_present_sum / count_days) if count_days else 0
+                latest_active = formatted_rows[-1]["total_students"] if formatted_rows else 0
 
                 return dataset(
                     formatted_rows,
                     series=["absent_students"],
                     unit="",
-                    note="Daily count of absent students across the institution. A student is counted as absent if they missed one or more scheduled sessions on that day. Students in internship batches are default present.",
+                    note="Daily count of absent students across the institution. Semester 1 students are included from their batch start date (August 31, 2026). Students are excluded from the attendance pool from the day after joining an internship batch. A student is counted as absent if they missed one or more scheduled sessions on that day.",
                     summary={
                         "avg_absent": avg_absent,
                         "avg_present": avg_present,
-                        "total_students": total_active,
+                        "total_students": latest_active,
                         "days_count": count_days,
                     },
                 )

@@ -374,7 +374,7 @@ def test_advanced_plots(client):
 
 
 def test_overall_daily_attendance_chart(client):
-    response = client.get("/api/charts/attendance/overall", params=PERIOD)
+    response = client.get("/api/charts/attendance/overall", params={"from_date": "2026-08-01", "to_date": "2026-09-05"})
     assert response.status_code == 200, response.text
     charts = response.json()["charts"]
     assert len(charts) == 1
@@ -392,6 +392,11 @@ def test_overall_daily_attendance_chart(client):
         assert "absent_students" in row
         assert "present_students" in row
         assert "total_students" in row
+        # Sem 1 starts on 2026-08-31; prior dates must have active Sem 3 & 5 count (< 500)
+        if row["date"] < "2026-08-31":
+            assert row["total_students"] < 500
+        else:
+            assert row["total_students"] > 600
 
 
 def test_student_attendance_matrix_pages_complete_active_roster(client):
