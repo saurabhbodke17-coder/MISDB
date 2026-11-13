@@ -57,7 +57,7 @@ function GoogleIcon() {
 
 function Login({onLogin}:{onLogin:()=>void}) {
   const mutation=useMutation({mutationFn:(body:object)=>api('/auth/login',{method:'POST',body:JSON.stringify(body)}),onSuccess:onLogin});
-  const googleConfig=useQuery({queryKey:['google-config'],queryFn:()=>api<{enabled:boolean;client_id:string;dev_mock?:boolean}>('/auth/google/config')});
+  const googleConfig=useQuery({queryKey:['google-config'],queryFn:()=>api<{enabled:boolean;client_id:string;dev_mock?:boolean;allowed_domains?:string[]}>('/auth/google/config')});
   const [googleNotice,setGoogleNotice]=useState('');
   const googleMutation=useMutation({
     mutationFn:(body:{credential:string})=>api('/auth/google',{method:'POST',body:JSON.stringify(body)}),
@@ -116,7 +116,7 @@ function Login({onLogin}:{onLogin:()=>void}) {
       <div className="login-panel-inner">
         <span className="eyebrow">WELCOME BACK</span>
         <h2>Sign in to your workspace</h2>
-        <p className="muted">Use your institutional Google account or provisioned credentials.</p>
+        <p className="muted">{googleConfig.data?.allowed_domains?.length?`Sign in with your @${googleConfig.data.allowed_domains.join(', @')} account.`:'Use your institutional Google account or provisioned credentials.'}</p>
 
         <div className="google-auth-box">
           {googleConfig.data?.enabled ? (
