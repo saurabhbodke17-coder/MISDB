@@ -1,7 +1,8 @@
+import json
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,8 +24,25 @@ class Settings(BaseSettings):
     ai_max_rows: int = Field(default=200, ge=10, le=1000)
     google_client_id: str | None = None
     google_client_secret: str | None = None
-    google_allowed_domains: list[str] = []
+    google_allowed_domains: list[str] = ["polariscampus.com"]
     google_default_role: str = "viewer"
+
+    @field_validator("google_allowed_domains", mode="before")
+    @classmethod
+    def parse_allowed_domains(cls, v):
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return []
+            if v.startswith("[") and v.endswith("]"):
+                try:
+                    return json.loads(v)
+                except Exception:
+                    pass
+            return [d.strip().lstrip("@") for d in v.split(",") if d.strip()]
+        if isinstance(v, list):
+            return [d.strip().lstrip("@") for d in v if isinstance(d, str) and d.strip()]
+        return v
 
     @model_validator(mode="after")
     def production_security(self):

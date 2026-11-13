@@ -168,14 +168,19 @@ def test_google_auth_flow(monkeypatch):
     res = client.post("/api/auth/google", json={"credential": "sample-dummy-token"})
     assert res.status_code == 403
 
-    # 6. Success when valid email
-    monkeypatch.setattr(config.settings(), "google_allowed_domains", [])
+    # 6. Success when valid email with allowed domain
+    monkeypatch.setattr(config.settings(), "google_allowed_domains", ["polariscampus.com"])
+
+    def mock_verify_domain_success(*args, **kwargs):
+        return {"email": "student@polariscampus.com", "email_verified": True, "name": "Jane Student"}
+
+    monkeypatch.setattr(id_token, "verify_oauth2_token", mock_verify_domain_success)
 
     class FakeValidCursor:
         def fetchone(self):
             return {
                 "id": "acc-123",
-                "username": "student@gmail.com",
+                "username": "student@polariscampus.com",
                 "display_name": "Jane Student",
                 "role": "viewer",
             }
@@ -193,11 +198,5 @@ def test_google_auth_flow(monkeypatch):
     monkeypatch.setattr(auth, "connection", lambda: FakeValidConn())
     res = client.post("/api/auth/google", json={"credential": "sample-dummy-token"})
     assert res.status_code == 200
-    assert res.json()["username"] == "student@gmail.com"
+    assert res.json()["username"] == "student@polariscampus.com"
     assert "polaris_session" in res.cookies
-
-
-
-
-
-

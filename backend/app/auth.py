@@ -124,6 +124,7 @@ def google_config():
         "enabled": bool(settings().google_client_id),
         "client_id": settings().google_client_id or "",
         "dev_mock": is_dev and not bool(settings().google_client_id),
+        "allowed_domains": settings().google_allowed_domains,
     }
 
 
@@ -172,9 +173,10 @@ def google_auth(body: GoogleCredential, response: Response):
     if settings().google_allowed_domains:
         domain = email.split("@")[-1]
         if domain not in settings().google_allowed_domains:
+            allowed_fmt = ", ".join(f"@{d}" for d in settings().google_allowed_domains)
             raise HTTPException(
                 403,
-                f"Access restricted. Email must belong to one of: {', '.join(settings().google_allowed_domains)}",
+                f"Access restricted. Only institutional accounts from {allowed_fmt} are allowed.",
             )
 
     display_name = idinfo.get("name") or idinfo.get("given_name") or email.split("@")[0]
@@ -283,9 +285,10 @@ def google_callback(
     if settings().google_allowed_domains:
         domain = email.split("@")[-1]
         if domain not in settings().google_allowed_domains:
+            allowed_fmt = ", ".join(f"@{d}" for d in settings().google_allowed_domains)
             raise HTTPException(
                 403,
-                f"Access restricted. Email must belong to: {', '.join(settings().google_allowed_domains)}",
+                f"Access restricted. Only institutional accounts from {allowed_fmt} are allowed.",
             )
 
     display_name = idinfo.get("name") or idinfo.get("given_name") or email.split("@")[0]
