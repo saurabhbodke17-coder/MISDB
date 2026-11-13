@@ -46,77 +46,77 @@ declare global {
 
 function GoogleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style={{flexShrink:0}}>
-      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z" fill="#4285F4"/>
-      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
-      <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707 0-.59.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z" fill="#FBBC05"/>
-      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961l3.007 2.332c.708-2.127 2.692-3.713 5.036-3.713z" fill="#EA4335"/>
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z" fill="#4285F4" />
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853" />
+      <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707 0-.59.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z" fill="#FBBC05" />
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961l3.007 2.332c.708-2.127 2.692-3.713 5.036-3.713z" fill="#EA4335" />
     </svg>
   );
 }
 
-function Login({onLogin}:{onLogin:()=>void}) {
-  const mutation=useMutation({mutationFn:(body:object)=>api('/auth/login',{method:'POST',body:JSON.stringify(body)}),onSuccess:onLogin});
-  const googleConfig=useQuery({queryKey:['google-config'],queryFn:()=>api<{enabled:boolean;client_id:string;dev_mock?:boolean;allowed_domains?:string[]}>('/auth/google/config')});
-  const [googleNotice,setGoogleNotice]=useState('');
-  const googleMutation=useMutation({
-    mutationFn:(body:{credential:string})=>api('/auth/google',{method:'POST',body:JSON.stringify(body)}),
-    onSuccess:onLogin,
+function Login({ onLogin }: { onLogin: () => void }) {
+  const mutation = useMutation({ mutationFn: (body: object) => api('/auth/login', { method: 'POST', body: JSON.stringify(body) }), onSuccess: onLogin });
+  const googleConfig = useQuery({ queryKey: ['google-config'], queryFn: () => api<{ enabled: boolean; client_id: string; dev_mock?: boolean; allowed_domains?: string[] }>('/auth/google/config') });
+  const [googleNotice, setGoogleNotice] = useState('');
+  const googleMutation = useMutation({
+    mutationFn: (body: { credential: string }) => api('/auth/google', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: onLogin,
   });
 
-  useEffect(()=>{
-    const clientId=googleConfig.data?.client_id;
-    if(!clientId||!googleConfig.data?.enabled)return;
-    const initGsi=()=>{
-      if(!window.google?.accounts?.id)return;
-      try{
+  useEffect(() => {
+    const clientId = googleConfig.data?.client_id;
+    if (!clientId || !googleConfig.data?.enabled) return;
+    const initGsi = () => {
+      if (!window.google?.accounts?.id) return;
+      try {
         window.google.accounts.id.initialize({
-          client_id:clientId,
-          callback:(res:{credential?:string})=>{
-            if(res.credential)googleMutation.mutate({credential:res.credential});
+          client_id: clientId,
+          callback: (res: { credential?: string }) => {
+            if (res.credential) googleMutation.mutate({ credential: res.credential });
           },
         });
-        const slot=document.getElementById('google-btn-slot');
-        if(slot){
-          slot.innerHTML='';
-          window.google.accounts.id.renderButton(slot,{
-            theme:'outline',
-            size:'large',
-            type:'standard',
-            shape:'rectangular',
-            text:'signin_with',
-            width:355,
+        const slot = document.getElementById('google-btn-slot');
+        if (slot) {
+          slot.innerHTML = '';
+          window.google.accounts.id.renderButton(slot, {
+            theme: 'outline',
+            size: 'large',
+            type: 'standard',
+            shape: 'rectangular',
+            text: 'signin_with',
+            width: 355,
           });
         }
-      }catch(e){
-        console.error('Failed to initialize Google Sign-In',e);
+      } catch (e) {
+        console.error('Failed to initialize Google Sign-In', e);
       }
     };
-    if(window.google?.accounts?.id)initGsi();
-    else{
-      const s=document.createElement('script');
-      s.src='https://accounts.google.com/gsi/client';
-      s.async=true;
-      s.defer=true;
-      s.onload=initGsi;
+    if (window.google?.accounts?.id) initGsi();
+    else {
+      const s = document.createElement('script');
+      s.src = 'https://accounts.google.com/gsi/client';
+      s.async = true;
+      s.defer = true;
+      s.onload = initGsi;
       document.head.appendChild(s);
     }
-  },[googleConfig.data?.enabled,googleConfig.data?.client_id]);
+  }, [googleConfig.data?.enabled, googleConfig.data?.client_id]);
 
   return <main className="login-page">
     <section className="login-intro">
-      <div className="brand"><span className="brand-mark"><img src={polarisLogo} alt="Polaris School of Technology"/></span></div>
+      <div className="brand"><span className="brand-mark"><img src={polarisLogo} alt="Polaris School of Technology" /></span></div>
       <span className="eyebrow">INSTITUTIONAL INTELLIGENCE</span>
-      <h1>A clear view.<br/>An accountable institution.</h1>
+      <h1>A clear view.<br />An accountable institution.</h1>
       <p>Connect academic delivery, student progress and operational follow-through in one command center.</p>
-      <div className="login-lines"><span/><span/><span/><span/><span/></div>
-      <div className="login-footer"><ShieldCheck size={17}/> Database-backed insights. Auditable decisions.</div>
+      <div className="login-lines"><span /><span /><span /><span /><span /></div>
+      <div className="login-footer"><ShieldCheck size={17} /> Database-backed insights. Auditable decisions.</div>
     </section>
     <section className="login-panel">
       <div className="login-panel-inner">
         <span className="eyebrow">WELCOME BACK</span>
         <h2>Sign in to your workspace</h2>
-        <p className="muted">{googleConfig.data?.allowed_domains?.length?`Sign in with your @${googleConfig.data.allowed_domains.join(', @')} account.`:'Use your institutional Google account or provisioned credentials.'}</p>
+        <p className="muted">{googleConfig.data?.allowed_domains?.length ? `Sign in with your @${googleConfig.data.allowed_domains.join(', @')} account.` : 'Use your institutional Google account or provisioned credentials.'}</p>
 
         <div className="google-auth-box">
           {googleConfig.data?.enabled ? (
@@ -163,11 +163,11 @@ function Login({onLogin}:{onLogin:()=>void}) {
           <span>or sign in with password</span>
         </div>
 
-        <form onSubmit={e=>{e.preventDefault();mutation.mutate(Object.fromEntries(new FormData(e.currentTarget)));}}>
-          <label>Username<input name="username" autoComplete="username" required autoFocus maxLength={200}/></label>
-          <label>Password<input name="password" type="password" autoComplete="current-password" required maxLength={1024}/></label>
-          {mutation.error&&<ErrorState error={mutation.error}/>}
-          <button className="button primary" disabled={mutation.isPending}>{mutation.isPending?'Signing in…':'Sign in →'}</button>
+        <form onSubmit={e => { e.preventDefault(); mutation.mutate(Object.fromEntries(new FormData(e.currentTarget))); }}>
+          <label>Username<input name="username" autoComplete="username" required autoFocus maxLength={200} /></label>
+          <label>Password<input name="password" type="password" autoComplete="current-password" required maxLength={1024} /></label>
+          {mutation.error && <ErrorState error={mutation.error} />}
+          <button className="button primary" disabled={mutation.isPending}>{mutation.isPending ? 'Signing in…' : 'Sign in →'}</button>
           <p className="login-note">Local setup credentials are in <code>local-access.txt</code>. LMS credentials are not reused.</p>
         </form>
       </div>
@@ -175,75 +175,75 @@ function Login({onLogin}:{onLogin:()=>void}) {
   </main>;
 }
 
-function DashboardView({data,filters,onGo,onBatch,onDate}: {data:Dashboard;filters:Filters;onGo:(id:string)=>void;onBatch:(id:string)=>void;onDate:(date:string)=>void}) {
-  const notifications=useQuery({queryKey:['notifications'],queryFn:()=>api<Row[]>('/notifications')});
-  const [granularity,setGranularity]=useState('weekly');const [breakdown,setBreakdown]=useState('institution');
+function DashboardView({ data, filters, onGo, onBatch, onDate }: { data: Dashboard; filters: Filters; onGo: (id: string) => void; onBatch: (id: string) => void; onDate: (date: string) => void }) {
+  const notifications = useQuery({ queryKey: ['notifications'], queryFn: () => api<Row[]>('/notifications') });
+  const [granularity, setGranularity] = useState('weekly'); const [breakdown, setBreakdown] = useState('institution');
   return <>
-    <div className="kpi-grid">{data.kpis.map(k=><KpiCard key={k.key} kpi={k} onClick={()=>onGo(k.module)}/>)}</div>
-    <div className="chart-controls"><span>Attendance interval</span><select aria-label="Overview attendance interval" value={granularity} onChange={e=>setGranularity(e.target.value)}><option value="daily">Daily</option><option value="weekly">Weekly</option></select><select aria-label="Attendance series" value={breakdown} onChange={e=>setBreakdown(e.target.value)}><option value="institution">Institution-wide</option><option value="batch">By batch</option></select></div>
-    <ChartPanels view="command" tab="overview" filters={filters} granularity={granularity} breakdown={breakdown} onSelect={(chart,point)=>{if(typeof point.name==='string'&&/^\d{4}-\d{2}-\d{2}/.test(point.name))onDate(point.name.slice(0,10));else onGo(chart.source==='support'?'tickets':'trends');}}/>
-    <div className="grid-main"><Card title="Batch-wise institutional health" subtitle="Recorded attendance across the selected cohorts" action={<button className="text-link" onClick={()=>onGo('attendance')}>View attendance →</button>}>
-      {data.batches.length?<div className="table-scroll"><table><thead><tr><th>Batch / cohort</th><th>Students recorded</th><th>Classes</th><th>Attendance</th><th>Signal</th></tr></thead><tbody>{data.batches.map(b=><tr key={b.id}><td><button className="text-link" onClick={()=>onBatch(b.id)}>{b.name}</button></td><td className="numeric">{b.students}</td><td className="numeric">{b.sessions}</td><td><div className="health-value"><span className="numeric">{b.attendance==null?'—':`${b.attendance}%`}</span><span className="progress"><i style={{width:`${b.attendance??0}%`,background:(b.attendance??0)>=85?'var(--green)':'var(--amber)'}}/></span></div></td><td><Badge value={b.attendance==null?'No evidence':b.attendance>=85?'On target':'Follow-up'}/></td></tr>)}</tbody></table></div>:<Empty/>}
-    </Card><Card title="Upcoming milestones · next 7 days" subtitle="Open work due within seven days" action={<button className="icon-button" onClick={()=>onGo('actions')} aria-label="Open action center"><ChevronDown size={16}/></button>}>
-      {notifications.data?.length?<div className="priority-list">{notifications.data.slice(0,5).map(n=><button key={n.id} onClick={()=>onGo('actions')}><span className="priority-date">{display(n.due_date)}</span><strong>{String(n.title)}</strong><Badge value={n.severity}/></button>)}</div>:<Empty title="Upcoming action data unavailable" message="Production has no mapped institutional action register with owners and deadlines."/>}
-    </Card></div>
+    <div className="kpi-grid">{data.kpis.map(k => <KpiCard key={k.key} kpi={k} onClick={() => onGo(k.module)} />)}</div>
+    <div className="chart-controls"><span>Attendance interval</span><select aria-label="Overview attendance interval" value={granularity} onChange={e => setGranularity(e.target.value)}><option value="daily">Daily</option><option value="weekly">Weekly</option></select><select aria-label="Attendance series" value={breakdown} onChange={e => setBreakdown(e.target.value)}><option value="institution">Institution-wide</option><option value="batch">By batch</option></select></div>
+    <ChartPanels view="command" tab="overview" filters={filters} granularity={granularity} breakdown={breakdown} onSelect={(chart, point) => { if (typeof point.name === 'string' && /^\d{4}-\d{2}-\d{2}/.test(point.name)) onDate(point.name.slice(0, 10)); else onGo(chart.source === 'support' ? 'tickets' : 'trends'); }} />
+    <div className="grid-main"><Card title="Batch-wise institutional health" subtitle="Recorded attendance across the selected cohorts" action={<button className="text-link" onClick={() => onGo('attendance')}>View attendance →</button>}>
+      {data.batches.length ? <div className="table-scroll"><table><thead><tr><th>Batch / cohort</th><th>Students recorded</th><th>Classes</th><th>Attendance</th><th>Signal</th></tr></thead><tbody>{data.batches.map(b => <tr key={b.id}><td><button className="text-link" onClick={() => onBatch(b.id)}>{b.name}</button></td><td className="numeric">{b.students}</td><td className="numeric">{b.sessions}</td><td><div className="health-value"><span className="numeric">{b.attendance == null ? '—' : `${b.attendance}%`}</span><span className="progress"><i style={{ width: `${b.attendance ?? 0}%`, background: (b.attendance ?? 0) >= 85 ? 'var(--green)' : 'var(--amber)' }} /></span></div></td><td><Badge value={b.attendance == null ? 'No evidence' : b.attendance >= 85 ? 'On target' : 'Follow-up'} /></td></tr>)}</tbody></table></div> : <Empty />}
+    </Card><Card title="Upcoming milestones · next 7 days" subtitle="Open work due within seven days" action={<button className="icon-button" onClick={() => onGo('actions')} aria-label="Open action center"><ChevronDown size={16} /></button>}>
+        {notifications.data?.length ? <div className="priority-list">{notifications.data.slice(0, 5).map(n => <button key={n.id} onClick={() => onGo('actions')}><span className="priority-date">{display(n.due_date)}</span><strong>{String(n.title)}</strong><Badge value={n.severity} /></button>)}</div> : <Empty title="Upcoming action data unavailable" message="Production has no mapped institutional action register with owners and deadlines." />}
+      </Card></div>
   </>;
 }
 
-function Workspace({user,onLogout}:{user:User;onLogout:()=>void}) {
-  const client=useQueryClient();
-  const [view,setView]=useState(()=>modules.some(m=>m.id===location.hash.slice(1))?location.hash.slice(1):'command');
-  const [tab,setTab]=useState(0);const [filters,setFilters]=useState<Filters>(initialFilters);const [range,setRange]=useState('source');const [sourceRangeApplied,setSourceRangeApplied]=useState(false);
-  const [collapsed,setCollapsed]=useState(false);const [mobile,setMobile]=useState(false);const [toast,setToast]=useState('');
-  const [drawer,setDrawer]=useState<{source:string;row:Row}|null>(null);
-  const [create,setCreate]=useState<{kind:string;source:string;sourceId?:string;title?:string}|null>(null);
-  const [ticket,setTicket]=useState(false);const [settingsOpen,setSettingsOpen]=useState(false);const [coverageOpen,setCoverageOpen]=useState(false);const [notifOpen,setNotifOpen]=useState(false);const [aiOpen,setAiOpen]=useState(false);
-  const [search,setSearch]=useState('');const [searchTerm,setSearchTerm]=useState('');
-  const selected=modules.find(m=>m.id===view)!;const selectedTab=selected.tabs[tab]||selected.tabs[0];
-  const options=useQuery({queryKey:['options'],queryFn:()=>api<Options>('/filters')});
-  useEffect(()=>{if(options.data&&!sourceRangeApplied){setFilters(f=>({...f,from_date:options.data!.data_range.first_date,to_date:options.data!.data_range.last_date}));setSourceRangeApplied(true);}},[options.data,sourceRangeApplied]);
-  const dashboard=useQuery({queryKey:['dashboard',filters],queryFn:()=>api<Dashboard>(`/dashboard?${queryString(filters)}`),enabled:sourceRangeApplied});
-  const notifications=useQuery({queryKey:['notifications'],queryFn:()=>api<Row[]>('/notifications')});
-  const coverage=useQuery({queryKey:['coverage'],queryFn:()=>api<{source:string;snapshot:string;available:string[];missing:string[];workflows:string;freshness:Record<string,string|null>}>('/coverage')});
-  const searchResult=useQuery({queryKey:['search',searchTerm],queryFn:()=>api<{id:string;title:string;source:string;type:string}[]>(`/search?q=${encodeURIComponent(searchTerm)}`),enabled:searchTerm.length>=2});
-  useEffect(()=>{const handler=()=>{const next=location.hash.slice(1);if(modules.some(m=>m.id===next)){setView(next);setTab(0);}};window.addEventListener('hashchange',handler);return()=>window.removeEventListener('hashchange',handler);},[]);
-  useEffect(()=>{if(toast){const id=setTimeout(()=>setToast(''),4500);return()=>clearTimeout(id);}},[toast]);
-  useEffect(()=>{const id=setTimeout(()=>setSearchTerm(search.trim()),250);return()=>clearTimeout(id);},[search]);
-  function presetDates(value:string){if(value==='today')return istRange(1);if(['7','14','28','56','90'].includes(value))return istRange(Number(value));return null;}
-  function syncPresetRange(activeRange:string){const next=presetDates(activeRange);if(!next)return;setFilters(prev=>prev.from_date===next.from_date&&prev.to_date===next.to_date?prev:{...prev,...next});}
-  useEffect(()=>{if(range!=='today')return;const sync=()=>syncPresetRange('today');sync();const onFocus=()=>sync();const onVis=()=>{if(!document.hidden)sync();};const id=setInterval(sync,60000);window.addEventListener('focus',onFocus);document.addEventListener('visibilitychange',onVis);return()=>{clearInterval(id);window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVis);};},[range]);
-  function go(id:string){const next=presetDates(range);if(id==='internship')setFilters(f=>({...f,...(next??{}),graduation_year_id:'',semester_id:'',specialization_id:'',batch_id:'',mentor_id:''}));else if(next)syncPresetRange(range);setView(id);setTab(0);setMobile(false);location.hash=id;}
-  function changeFilter(key:keyof Filters,value:string){const next=presetDates(range);setFilters(f=>({...f,...(next??{}),[key]:value,...(['specialization_id','graduation_year_id','semester_id'].includes(key)?{batch_id:''}:{})}));}
-  function changeRange(value:string){setRange(value);if(value==='custom')return;if(value==='source'&&options.data?.data_range.first_date){setFilters(f=>({...f,from_date:options.data!.data_range.first_date,to_date:options.data!.data_range.last_date}));return;}const next=presetDates(value);if(next)setFilters(prev=>({...prev,...next}));}
-  function saved(){void client.invalidateQueries();setCreate(null);setTicket(false);setSettingsOpen(false);setToast('Changes saved to the database.');}
-  function openRecord(source:string,row:Row){setDrawer({source,row});setSearch('');setSearchTerm('');}
-  const groups=[...new Set(modules.map(m=>m.group))];
-  const activeCount=Object.entries(filters).filter(([k,v])=>!['from_date','to_date'].includes(k)&&v).length;
-  function filterSelect(label:string,key:keyof Filters,items:{id:string;name:string}[]|undefined){return <label className="filter"><span>{label}</span><select value={filters[key]} onChange={e=>changeFilter(key,e.target.value)}><option value="">All {label==='Batch'?'batches':`${label.toLowerCase()}s`}</option>{items?.map(i=><option key={i.id} value={i.id}>{i.name}</option>)}</select></label>;}
-  return <div className={`app ${collapsed?'collapsed':''} ${mobile?'mobile-open':''}`}>
-    {mobile&&<button className="mobile-scrim" onClick={()=>setMobile(false)} aria-label="Close navigation"/>}
-    <aside className="sidebar"><div className="brand"><span className="brand-mark"><img src={polarisLogo} alt="Polaris School of Technology"/></span></div><nav aria-label="Main navigation">{groups.map(g=><div key={g}><div className="nav-group">{g}</div>{modules.filter(m=>m.group===g).map(m=><button key={m.id} className={view===m.id?'active':''} onClick={()=>go(m.id)} title={m.name} aria-current={view===m.id?'page':undefined}><m.icon size={17}/><span>{m.name}</span>{m.id==='actions'&&!!notifications.data?.length&&<b className="nav-count">{notifications.data.length}</b>}</button>)}</div>)}</nav><button className="collapse-toggle" onClick={()=>setCollapsed(c=>!c)}><ChevronLeft size={17}/><span>Collapse navigation</span></button><div className="sidebar-footer"><span className="green-dot"/><span>Connected to PostgreSQL</span></div></aside>
-    <div className="workspace"><header className="header"><div className="header-top"><button className="icon-button mobile-menu" onClick={()=>setMobile(true)} aria-label="Open navigation"><Menu size={20}/></button><div className="institution"><strong>Polaris School of Technology</strong><span>Bengaluru campus · Institutional Management Information System</span></div><button className="data-status" onClick={()=>setCoverageOpen(true)}><Database size={12}/> {coverage.data?.snapshot==='Live read-only'?'LIVE · READ ONLY':'DATABASE SNAPSHOT'}</button>
-      <div className="header-actions"><div className="global-search"><Search size={16}/><input aria-label="Global search" placeholder="Search students, sessions, actions…" value={search} onChange={e=>setSearch(e.target.value)}/>{searchTerm.length>=2&&<div className="search-results">{searchResult.isPending?<Loading/>:searchResult.error?<ErrorState error={searchResult.error}/>:searchResult.data?.length?searchResult.data.map(r=><button key={`${r.source}-${r.id}`} onClick={()=>openRecord(r.source,{id:r.id,title:r.title})}><strong>{r.title}</strong><span>{r.type}</span></button>):<p>No results found.</p>}</div>}</div><button className="icon-button notification-button" onClick={()=>setNotifOpen(true)} aria-label="Notifications"><Bell size={18}/>{!!notifications.data?.length&&<i/>}</button><button className="icon-button" onClick={()=>setSettingsOpen(true)} aria-label="Settings"><Settings2 size={18}/></button><div className="user-chip"><span className="avatar">{user.display_name.split(' ').slice(0,2).map(p=>p[0]).join('')}</span><div><strong>{user.display_name}</strong><small>{user.role}</small></div></div><button className="icon-button" aria-label="Sign out" onClick={async()=>{try{await api('/auth/logout',{method:'POST'});client.clear();onLogout();}catch(e){setToast((e as Error).message);}}}><LogOut size={17}/></button></div></div>
-      <div className="filters">{filterSelect('Cohort','graduation_year_id',options.data?.years)}{filterSelect('Semester','semester_id',options.data?.semesters)}<label className="filter"><span>Date range</span><select value={range} onChange={e=>changeRange(e.target.value)}><option value="today">Today (IST)</option><option value="7">Last 7 days</option><option value="14">Last 14 days</option><option value="28">Last 28 days</option><option value="56">Last 8 weeks</option><option value="90">Last 90 days</option><option value="source">All available dates</option><option value="custom">Custom range</option></select></label>
-        {range==='custom'&&<div className="date-inputs"><input aria-label="From date" type="date" value={filters.from_date} max={filters.to_date} onChange={e=>changeFilter('from_date',e.target.value)}/><span>to</span><input aria-label="To date" type="date" value={filters.to_date} min={filters.from_date} onChange={e=>changeFilter('to_date',e.target.value)}/></div>}
-        {filterSelect('Program','specialization_id',options.data?.programs)}{filterSelect('Batch','batch_id',options.data?.batches.filter(b=>(!filters.specialization_id||b.specialization_id===filters.specialization_id)&&(!filters.graduation_year_id||b.graduation_year_id===filters.graduation_year_id)&&(!filters.semester_id||b.semester_ids?.includes(filters.semester_id))))}{filterSelect('Mentor','mentor_id',options.data?.mentors)}<button className="reset-button" onClick={()=>{setFilters(initialFilters());setRange('28');}}><FilterX size={14}/> Reset{activeCount?` (${activeCount})`:''}</button><button className="ai-launch" onClick={()=>setAiOpen(true)}><Sparkles size={14}/> Ask Polaris AI</button>
+function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
+  const client = useQueryClient();
+  const [view, setView] = useState(() => modules.some(m => m.id === location.hash.slice(1)) ? location.hash.slice(1) : 'command');
+  const [tab, setTab] = useState(0); const [filters, setFilters] = useState<Filters>(initialFilters); const [range, setRange] = useState('source'); const [sourceRangeApplied, setSourceRangeApplied] = useState(false);
+  const [collapsed, setCollapsed] = useState(false); const [mobile, setMobile] = useState(false); const [toast, setToast] = useState('');
+  const [drawer, setDrawer] = useState<{ source: string; row: Row } | null>(null);
+  const [create, setCreate] = useState<{ kind: string; source: string; sourceId?: string; title?: string } | null>(null);
+  const [ticket, setTicket] = useState(false); const [settingsOpen, setSettingsOpen] = useState(false); const [coverageOpen, setCoverageOpen] = useState(false); const [notifOpen, setNotifOpen] = useState(false); const [aiOpen, setAiOpen] = useState(false);
+  const [search, setSearch] = useState(''); const [searchTerm, setSearchTerm] = useState('');
+  const selected = modules.find(m => m.id === view)!; const selectedTab = selected.tabs[tab] || selected.tabs[0];
+  const options = useQuery({ queryKey: ['options'], queryFn: () => api<Options>('/filters') });
+  useEffect(() => { if (options.data && !sourceRangeApplied) { setFilters(f => ({ ...f, from_date: options.data!.data_range.first_date, to_date: options.data!.data_range.last_date })); setSourceRangeApplied(true); } }, [options.data, sourceRangeApplied]);
+  const dashboard = useQuery({ queryKey: ['dashboard', filters], queryFn: () => api<Dashboard>(`/dashboard?${queryString(filters)}`), enabled: sourceRangeApplied });
+  const notifications = useQuery({ queryKey: ['notifications'], queryFn: () => api<Row[]>('/notifications') });
+  const coverage = useQuery({ queryKey: ['coverage'], queryFn: () => api<{ source: string; snapshot: string; available: string[]; missing: string[]; workflows: string; freshness: Record<string, string | null> }>('/coverage') });
+  const searchResult = useQuery({ queryKey: ['search', searchTerm], queryFn: () => api<{ id: string; title: string; source: string; type: string }[]>(`/search?q=${encodeURIComponent(searchTerm)}`), enabled: searchTerm.length >= 2 });
+  useEffect(() => { const handler = () => { const next = location.hash.slice(1); if (modules.some(m => m.id === next)) { setView(next); setTab(0); } }; window.addEventListener('hashchange', handler); return () => window.removeEventListener('hashchange', handler); }, []);
+  useEffect(() => { if (toast) { const id = setTimeout(() => setToast(''), 4500); return () => clearTimeout(id); } }, [toast]);
+  useEffect(() => { const id = setTimeout(() => setSearchTerm(search.trim()), 250); return () => clearTimeout(id); }, [search]);
+  function presetDates(value: string) { if (value === 'today') return istRange(1); if (['7', '14', '28', '56', '90'].includes(value)) return istRange(Number(value)); return null; }
+  function syncPresetRange(activeRange: string) { const next = presetDates(activeRange); if (!next) return; setFilters(prev => prev.from_date === next.from_date && prev.to_date === next.to_date ? prev : { ...prev, ...next }); }
+  useEffect(() => { if (range !== 'today') return; const sync = () => syncPresetRange('today'); sync(); const onFocus = () => sync(); const onVis = () => { if (!document.hidden) sync(); }; const id = setInterval(sync, 60000); window.addEventListener('focus', onFocus); document.addEventListener('visibilitychange', onVis); return () => { clearInterval(id); window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onVis); }; }, [range]);
+  function go(id: string) { const next = presetDates(range); if (id === 'internship') setFilters(f => ({ ...f, ...(next ?? {}), graduation_year_id: '', semester_id: '', specialization_id: '', batch_id: '', mentor_id: '' })); else if (next) syncPresetRange(range); setView(id); setTab(0); setMobile(false); location.hash = id; }
+  function changeFilter(key: keyof Filters, value: string) { const next = presetDates(range); setFilters(f => ({ ...f, ...(next ?? {}), [key]: value, ...(['specialization_id', 'graduation_year_id', 'semester_id'].includes(key) ? { batch_id: '' } : {}) })); }
+  function changeRange(value: string) { setRange(value); if (value === 'custom') return; if (value === 'source' && options.data?.data_range.first_date) { setFilters(f => ({ ...f, from_date: options.data!.data_range.first_date, to_date: options.data!.data_range.last_date })); return; } const next = presetDates(value); if (next) setFilters(prev => ({ ...prev, ...next })); }
+  function saved() { void client.invalidateQueries(); setCreate(null); setTicket(false); setSettingsOpen(false); setToast('Changes saved to the database.'); }
+  function openRecord(source: string, row: Row) { setDrawer({ source, row }); setSearch(''); setSearchTerm(''); }
+  const groups = [...new Set(modules.map(m => m.group))];
+  const activeCount = Object.entries(filters).filter(([k, v]) => !['from_date', 'to_date'].includes(k) && v).length;
+  function filterSelect(label: string, key: keyof Filters, items: { id: string; name: string }[] | undefined) { return <label className="filter"><span>{label}</span><select value={filters[key]} onChange={e => changeFilter(key, e.target.value)}><option value="">All {label === 'Batch' ? 'batches' : `${label.toLowerCase()}s`}</option>{items?.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select></label>; }
+  return <div className={`app ${collapsed ? 'collapsed' : ''} ${mobile ? 'mobile-open' : ''}`}>
+    {mobile && <button className="mobile-scrim" onClick={() => setMobile(false)} aria-label="Close navigation" />}
+    <aside className="sidebar"><div className="brand"><span className="brand-mark"><img src={polarisLogo} alt="Polaris School of Technology" /></span></div><nav aria-label="Main navigation">{groups.map(g => <div key={g}><div className="nav-group">{g}</div>{modules.filter(m => m.group === g).map(m => <button key={m.id} className={view === m.id ? 'active' : ''} onClick={() => go(m.id)} title={m.name} aria-current={view === m.id ? 'page' : undefined}><m.icon size={17} /><span>{m.name}</span>{m.id === 'actions' && !!notifications.data?.length && <b className="nav-count">{notifications.data.length}</b>}</button>)}</div>)}</nav><button className="collapse-toggle" onClick={() => setCollapsed(c => !c)}><ChevronLeft size={17} /><span>Collapse navigation</span></button><div className="sidebar-footer"><span className="green-dot" /><span>Connected to PostgreSQL</span></div></aside>
+    <div className="workspace"><header className="header"><div className="header-top"><button className="icon-button mobile-menu" onClick={() => setMobile(true)} aria-label="Open navigation"><Menu size={20} /></button><div className="institution"><strong>Polaris School of Technology</strong><span>Bengaluru campus · Institutional Management Information System</span></div><button className="data-status" onClick={() => setCoverageOpen(true)}><Database size={12} /> {coverage.data?.snapshot === 'Live read-only' ? 'LIVE · READ ONLY' : 'DATABASE SNAPSHOT'}</button>
+      <div className="header-actions"><div className="global-search"><Search size={16} /><input aria-label="Global search" placeholder="Search students, sessions, actions…" value={search} onChange={e => setSearch(e.target.value)} />{searchTerm.length >= 2 && <div className="search-results">{searchResult.isPending ? <Loading /> : searchResult.error ? <ErrorState error={searchResult.error} /> : searchResult.data?.length ? searchResult.data.map(r => <button key={`${r.source}-${r.id}`} onClick={() => openRecord(r.source, { id: r.id, title: r.title })}><strong>{r.title}</strong><span>{r.type}</span></button>) : <p>No results found.</p>}</div>}</div><button className="icon-button notification-button" onClick={() => setNotifOpen(true)} aria-label="Notifications"><Bell size={18} />{!!notifications.data?.length && <i />}</button><button className="icon-button" onClick={() => setSettingsOpen(true)} aria-label="Settings"><Settings2 size={18} /></button><div className="user-chip"><span className="avatar">{user.display_name.split(' ').slice(0, 2).map(p => p[0]).join('')}</span><div><strong>{user.display_name}</strong><small>{user.role}</small></div></div><button className="icon-button" aria-label="Sign out" onClick={async () => { try { await api('/auth/logout', { method: 'POST' }); client.clear(); onLogout(); } catch (e) { setToast((e as Error).message); } }}><LogOut size={17} /></button></div></div>
+      <div className="filters">{filterSelect('Cohort', 'graduation_year_id', options.data?.years)}{filterSelect('Semester', 'semester_id', options.data?.semesters)}<label className="filter"><span>Date range</span><select value={range} onChange={e => changeRange(e.target.value)}><option value="today">Today (IST)</option><option value="7">Last 7 days</option><option value="14">Last 14 days</option><option value="28">Last 28 days</option><option value="56">Last 8 weeks</option><option value="90">Last 90 days</option><option value="source">All available dates</option><option value="custom">Custom range</option></select></label>
+        {range === 'custom' && <div className="date-inputs"><input aria-label="From date" type="date" value={filters.from_date} max={filters.to_date} onChange={e => changeFilter('from_date', e.target.value)} /><span>to</span><input aria-label="To date" type="date" value={filters.to_date} min={filters.from_date} onChange={e => changeFilter('to_date', e.target.value)} /></div>}
+        {filterSelect('Program', 'specialization_id', options.data?.programs)}{filterSelect('Batch', 'batch_id', options.data?.batches.filter(b => (!filters.specialization_id || b.specialization_id === filters.specialization_id) && (!filters.graduation_year_id || b.graduation_year_id === filters.graduation_year_id) && (!filters.semester_id || b.semester_ids?.includes(filters.semester_id))))}{filterSelect('Mentor', 'mentor_id', options.data?.mentors)}<button className="reset-button" onClick={() => { setFilters(initialFilters()); setRange('28'); }}><FilterX size={14} /> Reset{activeCount ? ` (${activeCount})` : ''}</button><button className="ai-launch" onClick={() => setAiOpen(true)}><Sparkles size={14} /> Ask Polaris AI</button>
       </div></header>
-      <main id="main-content"><div className="breadcrumbs">{selected.group}<span>/</span><strong>{selected.name}</strong></div><div className="page-title"><div><div className="page-heading"><selected.icon size={22}/><h1>{selected.name}</h1></div><p>{selected.description}</p></div><div className="page-actions"><button className="button" onClick={()=>{syncPresetRange(range);void client.invalidateQueries();setToast('Refreshing database records…');}}><RefreshCw size={14}/> Refresh</button>{user.role!=='viewer'&&coverage.data?.snapshot!=='Live read-only'&&(selected.kind||view==='tickets')&&<button className="button primary" onClick={()=>view==='tickets'?setTicket(true):setCreate({kind:selected.kind!,source:view})}><Plus size={15}/> New {view==='tickets'?'ticket':selected.kind}</button>}</div></div>
-        <div className="context-line"><span><i className="blue-dot"/> {range==='today'?`${display(filters.from_date)} · Today (IST)`:`${display(filters.from_date)} – ${display(filters.to_date)}`}</span><span>Source: {coverage.data?.source ?? 'Production database'} · {coverage.data?.snapshot ?? 'Loading'}</span><button onClick={()=>setCoverageOpen(true)}><CircleHelp size={13}/> Data coverage</button></div>
-        {options.error&&<ErrorState error={options.error} retry={()=>void options.refetch()}/>}
-        {view==='command'?(dashboard.isPending?<Loading/>:dashboard.error?<ErrorState error={dashboard.error} retry={()=>void dashboard.refetch()}/>:dashboard.data&&<DashboardView data={dashboard.data} filters={filters} onGo={go} onBatch={id=>changeFilter('batch_id',id)} onDate={d=>{setFilters(f=>({...f,from_date:d,to_date:d}));setRange('custom');go('attendance');}}/>):<ModuleView module={selected} selectedTab={tab} setTab={setTab} filters={filters} dashboard={dashboard.data} openRecord={openRecord} setToast={setToast} onHeatSelect={(batch,date)=>{const end=new Date(`${date}T00:00:00`);end.setDate(end.getDate()+6);setFilters(f=>({...f,batch_id:batch,from_date:date,to_date:`${end.getFullYear()}-${String(end.getMonth()+1).padStart(2,'0')}-${String(end.getDate()).padStart(2,'0')}`}));setRange('custom');}}/>}
-        <footer className="content-footer"><span>Polaris MIS · Institutional Command Center</span><span>Asia/Kolkata · {selectedTab?.missing?'Source connection required':'Database-backed records'}</span></footer>
+      <main id="main-content"><div className="breadcrumbs">{selected.group}<span>/</span><strong>{selected.name}</strong></div><div className="page-title"><div><div className="page-heading"><selected.icon size={22} /><h1>{selected.name}</h1></div><p>{selected.description}</p></div><div className="page-actions"><button className="button" onClick={() => { syncPresetRange(range); void client.invalidateQueries(); setToast('Refreshing database records…'); }}><RefreshCw size={14} /> Refresh</button>{user.role !== 'viewer' && coverage.data?.snapshot !== 'Live read-only' && (selected.kind || view === 'tickets') && <button className="button primary" onClick={() => view === 'tickets' ? setTicket(true) : setCreate({ kind: selected.kind!, source: view })}><Plus size={15} /> New {view === 'tickets' ? 'ticket' : selected.kind}</button>}</div></div>
+        <div className="context-line"><span><i className="blue-dot" /> {range === 'today' ? `${display(filters.from_date)} · Today (IST)` : `${display(filters.from_date)} – ${display(filters.to_date)}`}</span><span>Source: {coverage.data?.source ?? 'Production database'} · {coverage.data?.snapshot ?? 'Loading'}</span><button onClick={() => setCoverageOpen(true)}><CircleHelp size={13} /> Data coverage</button></div>
+        {options.error && <ErrorState error={options.error} retry={() => void options.refetch()} />}
+        {view === 'command' ? (dashboard.isPending ? <Loading /> : dashboard.error ? <ErrorState error={dashboard.error} retry={() => void dashboard.refetch()} /> : dashboard.data && <DashboardView data={dashboard.data} filters={filters} onGo={go} onBatch={id => changeFilter('batch_id', id)} onDate={d => { setFilters(f => ({ ...f, from_date: d, to_date: d })); setRange('custom'); go('attendance'); }} />) : <ModuleView module={selected} selectedTab={tab} setTab={setTab} filters={filters} dashboard={dashboard.data} openRecord={openRecord} setToast={setToast} onHeatSelect={(batch, date) => { const end = new Date(`${date}T00:00:00`); end.setDate(end.getDate() + 6); setFilters(f => ({ ...f, batch_id: batch, from_date: date, to_date: `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}` })); setRange('custom'); }} />}
+        <footer className="content-footer"><span>Polaris MIS · Institutional Command Center</span><span>Asia/Kolkata · {selectedTab?.missing ? 'Source connection required' : 'Database-backed records'}</span></footer>
       </main>
     </div>
-    {toast&&<div className="toast" role="status">{toast}<button onClick={()=>setToast('')} aria-label="Dismiss message"><X size={15}/></button></div>}
-    {drawer&&<DetailDrawer key={`${drawer.source}-${drawer.row.id}`} {...drawer} filters={filters} user={user} onClose={()=>setDrawer(null)} onSaved={saved} onCreate={(title,id)=>{setCreate({kind:'action',source:view,sourceId:id,title});setDrawer(null);}}/>}
-    {create&&<CreateWork {...create} batchId={filters.batch_id} onClose={()=>setCreate(null)} onSaved={saved}/>}
-    {ticket&&<CreateTicket onClose={()=>setTicket(false)} onSaved={saved}/>}
-    {settingsOpen&&<SettingsDialog user={user} onClose={()=>setSettingsOpen(false)} onSaved={saved}/>}
-    {coverageOpen&&<Dialog title="Data coverage & definitions" onClose={()=>setCoverageOpen(false)}>{coverage.isPending?<Loading/>:coverage.error?<ErrorState error={coverage.error}/>:coverage.data&&<><p className="source-note">{coverage.data.source} · {coverage.data.snapshot}</p><h3>Latest source dates</h3><ul className="coverage-list">{Object.entries(coverage.data.freshness??{}).map(([key,value])=><li key={key}>{key.replaceAll('_',' ')}: {display(value)}</li>)}</ul><p className="muted">A live connection does not guarantee recent attendance entries. Scheduled sessions and assignment deadlines can be in the future.</p><h3>Available sources</h3><ul className="coverage-list">{coverage.data.available.map(x=><li key={x}>{x}</li>)}</ul><h3>Missing source evidence</h3><ul className="coverage-list missing">{coverage.data.missing.map(x=><li key={x}>{x}</li>)}</ul><p>{coverage.data.workflows}</p><h3>KPI definitions</h3>{dashboard.data?.kpis.map(k=><div className="definition" key={k.key}><strong>{k.label}</strong><p>{k.definition}</p></div>)}</>}</Dialog>}
-    {notifOpen&&<Dialog title="Upcoming & overdue work" onClose={()=>setNotifOpen(false)}>{notifications.isPending?<Loading/>:notifications.error?<ErrorState error={notifications.error}/>:notifications.data?.length?<div className="priority-list">{notifications.data.map(n=><button key={n.id} onClick={()=>{go('actions');setNotifOpen(false);}}><Badge value={n.severity}/><strong>{String(n.title)}</strong><span>Due {display(n.due_date)}</span></button>)}</div>:<Empty title="No urgent work assigned" message="Open work due within seven days will appear here."/>}</Dialog>}
-    {aiOpen&&<AIAssistant filters={filters} user={user} onClose={()=>setAiOpen(false)}/>}
+    {toast && <div className="toast" role="status">{toast}<button onClick={() => setToast('')} aria-label="Dismiss message"><X size={15} /></button></div>}
+    {drawer && <DetailDrawer key={`${drawer.source}-${drawer.row.id}`} {...drawer} filters={filters} user={user} onClose={() => setDrawer(null)} onSaved={saved} onCreate={(title, id) => { setCreate({ kind: 'action', source: view, sourceId: id, title }); setDrawer(null); }} />}
+    {create && <CreateWork {...create} batchId={filters.batch_id} onClose={() => setCreate(null)} onSaved={saved} />}
+    {ticket && <CreateTicket onClose={() => setTicket(false)} onSaved={saved} />}
+    {settingsOpen && <SettingsDialog user={user} onClose={() => setSettingsOpen(false)} onSaved={saved} />}
+    {coverageOpen && <Dialog title="Data coverage & definitions" onClose={() => setCoverageOpen(false)}>{coverage.isPending ? <Loading /> : coverage.error ? <ErrorState error={coverage.error} /> : coverage.data && <><p className="source-note">{coverage.data.source} · {coverage.data.snapshot}</p><h3>Latest source dates</h3><ul className="coverage-list">{Object.entries(coverage.data.freshness ?? {}).map(([key, value]) => <li key={key}>{key.replaceAll('_', ' ')}: {display(value)}</li>)}</ul><p className="muted">A live connection does not guarantee recent attendance entries. Scheduled sessions and assignment deadlines can be in the future.</p><h3>Available sources</h3><ul className="coverage-list">{coverage.data.available.map(x => <li key={x}>{x}</li>)}</ul><h3>Missing source evidence</h3><ul className="coverage-list missing">{coverage.data.missing.map(x => <li key={x}>{x}</li>)}</ul><p>{coverage.data.workflows}</p><h3>KPI definitions</h3>{dashboard.data?.kpis.map(k => <div className="definition" key={k.key}><strong>{k.label}</strong><p>{k.definition}</p></div>)}</>}</Dialog>}
+    {notifOpen && <Dialog title="Upcoming & overdue work" onClose={() => setNotifOpen(false)}>{notifications.isPending ? <Loading /> : notifications.error ? <ErrorState error={notifications.error} /> : notifications.data?.length ? <div className="priority-list">{notifications.data.map(n => <button key={n.id} onClick={() => { go('actions'); setNotifOpen(false); }}><Badge value={n.severity} /><strong>{String(n.title)}</strong><span>Due {display(n.due_date)}</span></button>)}</div> : <Empty title="No urgent work assigned" message="Open work due within seven days will appear here." />}</Dialog>}
+    {aiOpen && <AIAssistant filters={filters} user={user} onClose={() => setAiOpen(false)} />}
   </div>;
 }
 
@@ -256,14 +256,14 @@ function ModuleView({module,selectedTab,setTab,filters,dashboard,openRecord,setT
   const source=module.id==='trends'?trendSources[metric]:tab?.source;
   function selectChart(chart:Chart,point:Record<string,unknown>){
     const targetSource = String(point.source || (chart.id === 'attendance-2' || chart.render_as === 'class_absences' ? 'sessions' : chart.source || ''));
-    if(point.id && targetSource){openRecord(targetSource,{...point,id:String(point.id)});return;}
-    if(point.batch_id&&point.date){onHeatSelect(String(point.batch_id),String(point.date));return;}
-    if(typeof point.name==='string'&&!/^\d{4}-\d{2}-\d{2}/.test(point.name)){setSelection(point.name);return;}
-    if(point.row){setSelection(String(point.row));return;}
-    if(point.date){setSelection(String(point.date));return;}
+    if (point.id && targetSource) { openRecord(targetSource, { ...point, id: String(point.id) }); return; }
+    if (point.batch_id && point.date) { onHeatSelect(String(point.batch_id), String(point.date)); return; }
+    if (typeof point.name === 'string' && !/^\d{4}-\d{2}-\d{2}/.test(point.name)) { setSelection(point.name); return; }
+    if (point.row) { setSelection(String(point.row)); return; }
+    if (point.date) { setSelection(String(point.date)); return; }
     setToast('Use “View chart data” for the exact plotted values; the register below contains the scoped source records.');
   }
-  const isAcademic=['trends','attendance','sla','academic','mentors','assess'].includes(module.id);
+  const isAcademic = ['trends', 'attendance', 'sla', 'academic', 'mentors', 'assess'].includes(module.id);
   return <>
     {isAcademic&&dashboard&&<div className="compact-metrics">{dashboard.kpis.filter(k=>['attendance','delivery','completion','score'].includes(k.key)).map(k=><div key={k.key}><span>{k.label}</span><strong>{k.value==null?'—':`${k.value}%`}</strong></div>)}</div>}
     {module.id==='internship'&&internshipSummary.data&&<div className="compact-metrics"><div><span>Active students</span><strong>{internshipSummary.data.active_students}</strong></div><div><span>Dropped students</span><strong>{internshipSummary.data.dropped_students}</strong></div><div><span>Internship batches</span><strong>{internshipSummary.data.batches}</strong></div><div><span>Sessions in period</span><strong>{internshipSummary.data.sessions}</strong></div><div><span>Session completion</span><strong>{internshipSummary.data.completion_rate==null?'—':`${internshipSummary.data.completion_rate}%`}</strong></div><div><span>On-time starts</span><strong>{internshipSummary.data.on_time_rate==null?'—':`${internshipSummary.data.on_time_rate}%`}</strong></div></div>}
@@ -281,10 +281,10 @@ function ModuleView({module,selectedTab,setTab,filters,dashboard,openRecord,setT
 }
 
 export default function App() {
-  const client=useQueryClient();const [loggedOut,setLoggedOut]=useState(false);
-  const me=useQuery({queryKey:['me'],queryFn:()=>api<User>('/auth/me'),retry:false,enabled:!loggedOut});
-  useEffect(()=>{const expire=()=>{client.clear();setLoggedOut(true);};window.addEventListener('polaris-session-expired',expire);return()=>window.removeEventListener('polaris-session-expired',expire);},[client]);
-  if(me.isPending&&!loggedOut)return <div className="boot"><img className="boot-logo" src={polarisLogo} alt="Polaris School of Technology"/><Loading/></div>;
-  if(loggedOut||!me.data)return <Login onLogin={()=>{setLoggedOut(false);void client.invalidateQueries({queryKey:['me']});}}/>;
-  return <Workspace user={me.data} onLogout={()=>setLoggedOut(true)}/>;
+  const client = useQueryClient(); const [loggedOut, setLoggedOut] = useState(false);
+  const me = useQuery({ queryKey: ['me'], queryFn: () => api<User>('/auth/me'), retry: false, enabled: !loggedOut });
+  useEffect(() => { const expire = () => { client.clear(); setLoggedOut(true); }; window.addEventListener('polaris-session-expired', expire); return () => window.removeEventListener('polaris-session-expired', expire); }, [client]);
+  if (me.isPending && !loggedOut) return <div className="boot"><img className="boot-logo" src={polarisLogo} alt="Polaris School of Technology" /><Loading /></div>;
+  if (loggedOut || !me.data) return <Login onLogin={() => { setLoggedOut(false); void client.invalidateQueries({ queryKey: ['me'] }); }} />;
+  return <Workspace user={me.data} onLogout={() => setLoggedOut(true)} />;
 }
