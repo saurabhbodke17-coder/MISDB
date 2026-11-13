@@ -3,7 +3,7 @@ export type User = { id: string; username: string; display_name: string; role: '
 export type Filters = { from_date: string; to_date: string; batch_id: string; specialization_id: string; semester_id: string; graduation_year_id: string; mentor_id: string };
 export type Option = { id: string; name: string; specialization_id?: string; graduation_year_id?: string; semester_ids?: string[] };
 export type MetricSettings = { attendance_target: number; delivery_target: number; completion_target: number; late_tolerance: number; risk_attendance: number; pass_mark: number; sla_target: number; task_target: number; late_counts_present: boolean };
-export type Options = { batches: Option[]; programs: Option[]; semesters: Option[]; years: Option[]; mentors: Option[]; settings: MetricSettings; data_range: { first_date: string; last_date: string } };
+export type Options = { batches: Option[]; programs: Option[]; semesters: Option[]; years: Option[]; mentors: Option[]; subjects?: Option[]; settings: MetricSettings; data_range: { first_date: string; last_date: string } };
 export type Register = { title: string; columns: string[]; rows: Row[]; total: number; page: number; page_size: number; note: string; scope: string };
 export type Kpi = { key: string; label: string; value: number | null; unit: string; delta: number | null; target: number | null; definition: string; module: string; denominator?: number; evidence?: string; spark?: (number|null)[] };
 
@@ -22,7 +22,7 @@ export async function api<T>(url: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     const detail = typeof body.detail === 'string' ? body.detail : Array.isArray(body.detail) ? body.detail.map((d: {msg: string}) => d.msg).join('; ') : 'Request failed. Please try again.';
-    if (response.status === 401 && url !== '/auth/login') window.dispatchEvent(new Event('polaris-session-expired'));
+    if (response.status === 401 && url !== '/auth/login' && !url.startsWith('/auth/google')) window.dispatchEvent(new Event('polaris-session-expired'));
     throw new ApiError(response.status, detail);
   }
   return response.status === 204 ? undefined as T : response.json();
