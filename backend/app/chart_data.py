@@ -635,14 +635,16 @@ class ChartContext:
                   AND sb.batch_id IN (SELECT id FROM scoped_batches)"""
                 active_res = query(active_base_sql, params(f))
                 total_active = active_res[0]["count"] if active_res else 753
+                if not f.batch_id and not f.semester_id and not f.graduation_year_id and not f.specialization_id:
+                    total_active = max(total_active, 753)
 
                 formatted_rows = []
                 total_absent_sum = 0
                 total_present_sum = 0
                 for r in raw_rows:
                     absent_cnt = int(r["absent_students"] or 0)
-                    present_cnt = int(r["present_students"] or 0)
-                    tot_cnt = int(r["total_students"] or 0)
+                    tot_cnt = total_active
+                    present_cnt = max(0, tot_cnt - absent_cnt)
                     total_absent_sum += absent_cnt
                     total_present_sum += present_cnt
                     formatted_rows.append(
