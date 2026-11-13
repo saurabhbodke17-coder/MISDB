@@ -265,8 +265,13 @@
     "attendance": {
       "tabs": [
         {
+          "id": "overall",
+          "label": "Overall attendance",
+          "source": "attendance"
+        },
+        {
           "id": "daily",
-          "label": "Daily attendance",
+          "label": "Subject-wise attendance",
           "source": "attendance"
         },
         {
@@ -286,6 +291,15 @@
         }
       ],
       "charts": [
+        {
+          "id": "attendance-overall",
+          "tab": "overall",
+          "title": "Overall daily student absence",
+          "type": "bar",
+          "provider": "attendance.overall_daily",
+          "reason": null,
+          "source": "attendance"
+        },
         {
           "id": "attendance-2",
           "tab": "daily",
