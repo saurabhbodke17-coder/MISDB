@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from .analytics import BATCH_SCOPE, Filters, filters, metric_settings, params
 from .auth import current_user
-from .db import query
+from .db import one, query
 from .plots import attendance_heatmap, student_scatter, task_timeline
 from .records import source_query
 
@@ -948,6 +948,11 @@ class ChartContext:
                     unit="/5",
                     note="Numeric 1–5 session-feedback responses only. This is session satisfaction, not an institution-wide student/parent survey.",
                 )
+            extra = {}
+            if f.mentor_id:
+                mentor_row = one("SELECT name FROM users WHERE id=%s", (f.mentor_id,))
+                if mentor_row and mentor_row.get("name"):
+                    extra["title"] = f"Feedback distribution · {mentor_row['name']}"
             rows = query(
                 f"SELECT response::numeric AS name,count(*) AS value FROM ({sql}) x WHERE {where} GROUP BY 1 ORDER BY 1",
                 p,
@@ -955,6 +960,7 @@ class ChartContext:
             return dataset(
                 rows,
                 note="Only numeric 1–5 responses in the scoped session feedback; no inferred sentiment scores.",
+                **extra,
             )
         if domain == "communications":
             source = "parents" if mode.endswith("parent") else "announcements"
