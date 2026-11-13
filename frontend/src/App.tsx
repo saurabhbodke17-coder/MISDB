@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, ChevronDown, ChevronLeft, CircleHelp, Database, FilterX, LogOut, Menu, Plus, RefreshCw, Search, Settings2, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { useIsFetching, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Bell, Check, ChevronDown, ChevronLeft, CircleHelp, Database, Filter, FilterX, LoaderCircle, LogOut, Menu, Plus, RefreshCw, Search, Settings2, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { api, display, initialFilters, istRange, queryString } from './api';
 import type { Dashboard, Filters, Options, Row, User } from './api';
 import { Badge, Card, Empty, ErrorState, KpiCard, Loading } from './components';
@@ -192,59 +192,402 @@ function DashboardView({ data, filters, onGo, onBatch, onDate }: { data: Dashboa
 
 function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const client = useQueryClient();
+  const isFetchingCount = useIsFetching();
   const [view, setView] = useState(() => modules.some(m => m.id === location.hash.slice(1)) ? location.hash.slice(1) : 'command');
-  const [tab, setTab] = useState(0); const [filters, setFilters] = useState<Filters>(initialFilters); const [range, setRange] = useState('source'); const [sourceRangeApplied, setSourceRangeApplied] = useState(false);
-  const [collapsed, setCollapsed] = useState(false); const [mobile, setMobile] = useState(false); const [toast, setToast] = useState('');
+  const [tab, setTab] = useState(0);
+
+  // Draft filters: what is currently chosen in the filter dropdowns/inputs
+  const [draftFilters, setDraftFilters] = useState<Filters>(initialFilters);
+  const [draftRange, setDraftRange] = useState('source');
+
+  // Applied filters: what queries, charts, and tables are actively filtered by
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(initialFilters);
+  const [appliedRange, setAppliedRange] = useState('source');
+
+  const [sourceRangeApplied, setSourceRangeApplied] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
+
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  const [toast, setToast] = useState('');
   const [drawer, setDrawer] = useState<{ source: string; row: Row } | null>(null);
   const [create, setCreate] = useState<{ kind: string; source: string; sourceId?: string; title?: string } | null>(null);
-  const [ticket, setTicket] = useState(false); const [settingsOpen, setSettingsOpen] = useState(false); const [coverageOpen, setCoverageOpen] = useState(false); const [notifOpen, setNotifOpen] = useState(false); const [aiOpen, setAiOpen] = useState(false);
-  const [search, setSearch] = useState(''); const [searchTerm, setSearchTerm] = useState('');
-  const selected = modules.find(m => m.id === view)!; const selectedTab = selected.tabs[tab] || selected.tabs[0];
+  const [ticket, setTicket] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [coverageOpen, setCoverageOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const selected = modules.find(m => m.id === view)!;
+  const selectedTab = selected.tabs[tab] || selected.tabs[0];
+
   const options = useQuery({ queryKey: ['options'], queryFn: () => api<Options>('/filters') });
-  useEffect(() => { if (options.data && !sourceRangeApplied) { setFilters(f => ({ ...f, from_date: options.data!.data_range.first_date, to_date: options.data!.data_range.last_date })); setSourceRangeApplied(true); } }, [options.data, sourceRangeApplied]);
-  const dashboard = useQuery({ queryKey: ['dashboard', filters], queryFn: () => api<Dashboard>(`/dashboard?${queryString(filters)}`), enabled: sourceRangeApplied });
+  useEffect(() => {
+    if (options.data && !sourceRangeApplied) {
+      const dates = {
+        from_date: options.data.data_range.first_date,
+        to_date: options.data.data_range.last_date,
+      };
+      setDraftFilters(f => ({ ...f, ...dates }));
+      setAppliedFilters(f => ({ ...f, ...dates }));
+      setSourceRangeApplied(true);
+    }
+  }, [options.data, sourceRangeApplied]);
+
+  const dashboard = useQuery({ queryKey: ['dashboard', appliedFilters], queryFn: () => api<Dashboard>(`/dashboard?${queryString(appliedFilters)}`), enabled: sourceRangeApplied });
   const notifications = useQuery({ queryKey: ['notifications'], queryFn: () => api<Row[]>('/notifications') });
   const coverage = useQuery({ queryKey: ['coverage'], queryFn: () => api<{ source: string; snapshot: string; available: string[]; missing: string[]; workflows: string; freshness: Record<string, string | null> }>('/coverage') });
   const searchResult = useQuery({ queryKey: ['search', searchTerm], queryFn: () => api<{ id: string; title: string; source: string; type: string }[]>(`/search?q=${encodeURIComponent(searchTerm)}`), enabled: searchTerm.length >= 2 });
-  useEffect(() => { const handler = () => { const next = location.hash.slice(1); if (modules.some(m => m.id === next)) { setView(next); setTab(0); } }; window.addEventListener('hashchange', handler); return () => window.removeEventListener('hashchange', handler); }, []);
-  useEffect(() => { if (toast) { const id = setTimeout(() => setToast(''), 4500); return () => clearTimeout(id); } }, [toast]);
-  useEffect(() => { const id = setTimeout(() => setSearchTerm(search.trim()), 250); return () => clearTimeout(id); }, [search]);
-  function presetDates(value: string) { if (value === 'today') return istRange(1); if (['7', '14', '28', '56', '90'].includes(value)) return istRange(Number(value)); return null; }
-  function syncPresetRange(activeRange: string) { const next = presetDates(activeRange); if (!next) return; setFilters(prev => prev.from_date === next.from_date && prev.to_date === next.to_date ? prev : { ...prev, ...next }); }
-  useEffect(() => { if (range !== 'today') return; const sync = () => syncPresetRange('today'); sync(); const onFocus = () => sync(); const onVis = () => { if (!document.hidden) sync(); }; const id = setInterval(sync, 60000); window.addEventListener('focus', onFocus); document.addEventListener('visibilitychange', onVis); return () => { clearInterval(id); window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onVis); }; }, [range]);
-  function go(id: string) { const next = presetDates(range); if (id === 'internship') setFilters(f => ({ ...f, ...(next ?? {}), graduation_year_id: '', semester_id: '', specialization_id: '', batch_id: '', mentor_id: '' })); else if (next) syncPresetRange(range); setView(id); setTab(0); setMobile(false); location.hash = id; }
-  function changeFilter(key: keyof Filters, value: string) { const next = presetDates(range); setFilters(f => ({ ...f, ...(next ?? {}), [key]: value, ...(['specialization_id', 'graduation_year_id', 'semester_id'].includes(key) ? { batch_id: '' } : {}) })); }
-  function changeRange(value: string) { setRange(value); if (value === 'custom') return; if (value === 'source' && options.data?.data_range.first_date) { setFilters(f => ({ ...f, from_date: options.data!.data_range.first_date, to_date: options.data!.data_range.last_date })); return; } const next = presetDates(value); if (next) setFilters(prev => ({ ...prev, ...next })); }
-  function saved() { void client.invalidateQueries(); setCreate(null); setTicket(false); setSettingsOpen(false); setToast('Changes saved to the database.'); }
-  function openRecord(source: string, row: Row) { setDrawer({ source, row }); setSearch(''); setSearchTerm(''); }
+
+  useEffect(() => {
+    const handler = () => {
+      const next = location.hash.slice(1);
+      if (modules.some(m => m.id === next)) {
+        setView(next);
+        setTab(0);
+      }
+    };
+    window.addEventListener('hashchange', handler);
+    return () => window.removeEventListener('hashchange', handler);
+  }, []);
+
+  useEffect(() => {
+    if (toast) {
+      const id = setTimeout(() => setToast(''), 4500);
+      return () => clearTimeout(id);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    const id = setTimeout(() => setSearchTerm(search.trim()), 250);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  function presetDates(value: string) {
+    if (value === 'today') return istRange(1);
+    if (['7', '14', '28', '56', '90'].includes(value)) return istRange(Number(value));
+    return null;
+  }
+
+  function syncPresetRange(activeRange: string, target: 'applied' | 'draft' | 'both' = 'both') {
+    const next = presetDates(activeRange);
+    if (!next) return;
+    if (target === 'both' || target === 'draft') {
+      setDraftFilters(prev => prev.from_date === next.from_date && prev.to_date === next.to_date ? prev : { ...prev, ...next });
+    }
+    if (target === 'both' || target === 'applied') {
+      setAppliedFilters(prev => prev.from_date === next.from_date && prev.to_date === next.to_date ? prev : { ...prev, ...next });
+    }
+  }
+
+  useEffect(() => {
+    if (appliedRange !== 'today' && draftRange !== 'today') return;
+    const sync = () => {
+      if (draftRange === 'today') syncPresetRange('today', 'draft');
+      if (appliedRange === 'today') syncPresetRange('today', 'applied');
+    };
+    sync();
+    const onFocus = () => sync();
+    const onVis = () => { if (!document.hidden) sync(); };
+    const id = setInterval(sync, 60000);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [appliedRange, draftRange]);
+
+  function go(id: string) {
+    const next = presetDates(appliedRange);
+    if (id === 'internship') {
+      const resetInternship = {
+        ...(next ?? {}),
+        graduation_year_id: '',
+        semester_id: '',
+        specialization_id: '',
+        batch_id: '',
+        mentor_id: ''
+      };
+      setDraftFilters(f => ({ ...f, ...resetInternship }));
+      setAppliedFilters(f => ({ ...f, ...resetInternship }));
+    } else if (next) {
+      syncPresetRange(appliedRange, 'both');
+    }
+    setView(id);
+    setTab(0);
+    setMobile(false);
+    location.hash = id;
+  }
+
+  function changeDraftFilter(key: keyof Filters, value: string) {
+    const next = presetDates(draftRange);
+    setDraftFilters(f => ({
+      ...f,
+      ...(next ?? {}),
+      [key]: value,
+      ...(['specialization_id', 'graduation_year_id', 'semester_id'].includes(key) ? { batch_id: '' } : {})
+    }));
+  }
+
+  function changeDraftRange(value: string) {
+    setDraftRange(value);
+    if (value === 'custom') return;
+    if (value === 'source' && options.data?.data_range.first_date) {
+      setDraftFilters(f => ({
+        ...f,
+        from_date: options.data!.data_range.first_date,
+        to_date: options.data!.data_range.last_date
+      }));
+      return;
+    }
+    const next = presetDates(value);
+    if (next) {
+      setDraftFilters(prev => ({ ...prev, ...next }));
+    }
+  }
+
+  const hasPendingChanges = Boolean(
+    draftRange !== appliedRange ||
+    draftFilters.from_date !== appliedFilters.from_date ||
+    draftFilters.to_date !== appliedFilters.to_date ||
+    draftFilters.graduation_year_id !== appliedFilters.graduation_year_id ||
+    draftFilters.semester_id !== appliedFilters.semester_id ||
+    draftFilters.specialization_id !== appliedFilters.specialization_id ||
+    draftFilters.batch_id !== appliedFilters.batch_id ||
+    draftFilters.mentor_id !== appliedFilters.mentor_id
+  );
+
+  function handleApply() {
+    setIsApplying(true);
+    const next = presetDates(draftRange);
+    const resolved = next ? { ...draftFilters, ...next } : { ...draftFilters };
+    setDraftFilters(resolved);
+    setAppliedFilters(resolved);
+    setAppliedRange(draftRange);
+  }
+
+  useEffect(() => {
+    if (isApplying && isFetchingCount === 0) {
+      const timer = setTimeout(() => setIsApplying(false), 250);
+      return () => clearTimeout(timer);
+    }
+  }, [isApplying, isFetchingCount]);
+
+  const isLoadingData = isApplying || (isFetchingCount > 0 && sourceRangeApplied);
+
+  function handleReset() {
+    const initial = initialFilters();
+    const defaultRange = options.data?.data_range.first_date ? 'source' : '28';
+    const dates = options.data?.data_range.first_date ? {
+      from_date: options.data.data_range.first_date,
+      to_date: options.data.data_range.last_date,
+    } : presetDates('28') ?? {};
+
+    const resetFilters = { ...initial, ...dates };
+    setDraftFilters(resetFilters);
+    setAppliedFilters(resetFilters);
+    setDraftRange(defaultRange);
+    setAppliedRange(defaultRange);
+    setIsApplying(false);
+  }
+
+  function saved() {
+    void client.invalidateQueries();
+    setCreate(null);
+    setTicket(false);
+    setSettingsOpen(false);
+    setToast('Changes saved to the database.');
+  }
+
+  function openRecord(source: string, row: Row) {
+    setDrawer({ source, row });
+    setSearch('');
+    setSearchTerm('');
+  }
+
   const groups = [...new Set(modules.map(m => m.group))];
-  const activeCount = Object.entries(filters).filter(([k, v]) => !['from_date', 'to_date'].includes(k) && v).length;
-  function filterSelect(label: string, key: keyof Filters, items: { id: string; name: string }[] | undefined) { return <label className="filter"><span>{label}</span><select value={filters[key]} onChange={e => changeFilter(key, e.target.value)}><option value="">All {label === 'Batch' ? 'batches' : `${label.toLowerCase()}s`}</option>{items?.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select></label>; }
-  return <div className={`app ${collapsed ? 'collapsed' : ''} ${mobile ? 'mobile-open' : ''}`}>
-    {mobile && <button className="mobile-scrim" onClick={() => setMobile(false)} aria-label="Close navigation" />}
-    <aside className="sidebar"><div className="brand"><span className="brand-mark"><img src={polarisLogo} alt="Polaris School of Technology" /></span></div><nav aria-label="Main navigation">{groups.map(g => <div key={g}><div className="nav-group">{g}</div>{modules.filter(m => m.group === g).map(m => <button key={m.id} className={view === m.id ? 'active' : ''} onClick={() => go(m.id)} title={m.name} aria-current={view === m.id ? 'page' : undefined}><m.icon size={17} /><span>{m.name}</span>{m.id === 'actions' && !!notifications.data?.length && <b className="nav-count">{notifications.data.length}</b>}</button>)}</div>)}</nav><button className="collapse-toggle" onClick={() => setCollapsed(c => !c)}><ChevronLeft size={17} /><span>Collapse navigation</span></button><div className="sidebar-footer"><span className="green-dot" /><span>Connected to PostgreSQL</span></div></aside>
-    <div className="workspace"><header className="header"><div className="header-top"><button className="icon-button mobile-menu" onClick={() => setMobile(true)} aria-label="Open navigation"><Menu size={20} /></button><div className="institution"><strong>Polaris School of Technology</strong><span>Bengaluru campus · Institutional Management Information System</span></div><button className="data-status" onClick={() => setCoverageOpen(true)}><Database size={12} /> {coverage.data?.snapshot === 'Live read-only' ? 'LIVE · READ ONLY' : 'DATABASE SNAPSHOT'}</button>
-      <div className="header-actions"><div className="global-search"><Search size={16} /><input aria-label="Global search" placeholder="Search students, sessions, actions…" value={search} onChange={e => setSearch(e.target.value)} />{searchTerm.length >= 2 && <div className="search-results">{searchResult.isPending ? <Loading /> : searchResult.error ? <ErrorState error={searchResult.error} /> : searchResult.data?.length ? searchResult.data.map(r => <button key={`${r.source}-${r.id}`} onClick={() => openRecord(r.source, { id: r.id, title: r.title })}><strong>{r.title}</strong><span>{r.type}</span></button>) : <p>No results found.</p>}</div>}</div><button className="icon-button notification-button" onClick={() => setNotifOpen(true)} aria-label="Notifications"><Bell size={18} />{!!notifications.data?.length && <i />}</button><button className="icon-button" onClick={() => setSettingsOpen(true)} aria-label="Settings"><Settings2 size={18} /></button><div className="user-chip"><span className="avatar">{user.display_name.split(' ').slice(0, 2).map(p => p[0]).join('')}</span><div><strong>{user.display_name}</strong><small>{user.role}</small></div></div><button className="icon-button" aria-label="Sign out" onClick={async () => { try { await api('/auth/logout', { method: 'POST' }); client.clear(); onLogout(); } catch (e) { setToast((e as Error).message); } }}><LogOut size={17} /></button></div></div>
-      <div className="filters">{filterSelect('Cohort', 'graduation_year_id', options.data?.years)}{filterSelect('Semester', 'semester_id', options.data?.semesters)}<label className="filter"><span>Date range</span><select value={range} onChange={e => changeRange(e.target.value)}><option value="today">Today (IST)</option><option value="7">Last 7 days</option><option value="14">Last 14 days</option><option value="28">Last 28 days</option><option value="56">Last 8 weeks</option><option value="90">Last 90 days</option><option value="source">All available dates</option><option value="custom">Custom range</option></select></label>
-        {range === 'custom' && <div className="date-inputs"><input aria-label="From date" type="date" value={filters.from_date} max={filters.to_date} onChange={e => changeFilter('from_date', e.target.value)} /><span>to</span><input aria-label="To date" type="date" value={filters.to_date} min={filters.from_date} onChange={e => changeFilter('to_date', e.target.value)} /></div>}
-        {filterSelect('Program', 'specialization_id', options.data?.programs)}{filterSelect('Batch', 'batch_id', options.data?.batches.filter(b => (!filters.specialization_id || b.specialization_id === filters.specialization_id) && (!filters.graduation_year_id || b.graduation_year_id === filters.graduation_year_id) && (!filters.semester_id || b.semester_ids?.includes(filters.semester_id))))}{filterSelect('Mentor', 'mentor_id', options.data?.mentors)}<button className="reset-button" onClick={() => { setFilters(initialFilters()); setRange('28'); }}><FilterX size={14} /> Reset{activeCount ? ` (${activeCount})` : ''}</button><button className="ai-launch" onClick={() => setAiOpen(true)}><Sparkles size={14} /> Ask Polaris AI</button>
-      </div></header>
-      <main id="main-content"><div className="breadcrumbs">{selected.group}<span>/</span><strong>{selected.name}</strong></div><div className="page-title"><div><div className="page-heading"><selected.icon size={22} /><h1>{selected.name}</h1></div><p>{selected.description}</p></div><div className="page-actions"><button className="button" onClick={() => { syncPresetRange(range); void client.invalidateQueries(); setToast('Refreshing database records…'); }}><RefreshCw size={14} /> Refresh</button>{user.role !== 'viewer' && coverage.data?.snapshot !== 'Live read-only' && (selected.kind || view === 'tickets') && <button className="button primary" onClick={() => view === 'tickets' ? setTicket(true) : setCreate({ kind: selected.kind!, source: view })}><Plus size={15} /> New {view === 'tickets' ? 'ticket' : selected.kind}</button>}</div></div>
-        <div className="context-line"><span><i className="blue-dot" /> {range === 'today' ? `${display(filters.from_date)} · Today (IST)` : `${display(filters.from_date)} – ${display(filters.to_date)}`}</span><span>Source: {coverage.data?.source ?? 'Production database'} · {coverage.data?.snapshot ?? 'Loading'}</span><button onClick={() => setCoverageOpen(true)}><CircleHelp size={13} /> Data coverage</button></div>
-        {options.error && <ErrorState error={options.error} retry={() => void options.refetch()} />}
-        {view === 'command' ? (dashboard.isPending ? <Loading /> : dashboard.error ? <ErrorState error={dashboard.error} retry={() => void dashboard.refetch()} /> : dashboard.data && <DashboardView data={dashboard.data} filters={filters} onGo={go} onBatch={id => changeFilter('batch_id', id)} onDate={d => { setFilters(f => ({ ...f, from_date: d, to_date: d })); setRange('custom'); go('attendance'); }} />) : <ModuleView module={selected} selectedTab={tab} setTab={setTab} filters={filters} dashboard={dashboard.data} openRecord={openRecord} setToast={setToast} onHeatSelect={(batch, date) => { const end = new Date(`${date}T00:00:00`); end.setDate(end.getDate() + 6); setFilters(f => ({ ...f, batch_id: batch, from_date: date, to_date: `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}` })); setRange('custom'); }} />}
-        <footer className="content-footer"><span>Polaris MIS · Institutional Command Center</span><span>Asia/Kolkata · {selectedTab?.missing ? 'Source connection required' : 'Database-backed records'}</span></footer>
-      </main>
+  const activeCount = Object.entries(draftFilters).filter(([k, v]) => !['from_date', 'to_date'].includes(k) && v).length;
+
+  function filterSelect(label: string, key: keyof Filters, items: { id: string; name: string }[] | undefined) {
+    return (
+      <label className="filter">
+        <span>{label}</span>
+        <select value={draftFilters[key]} onChange={e => changeDraftFilter(key, e.target.value)}>
+          <option value="">All {label === 'Batch' ? 'batches' : `${label.toLowerCase()}s`}</option>
+          {items?.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+        </select>
+      </label>
+    );
+  }
+
+  return (
+    <div className={`app ${collapsed ? 'collapsed' : ''} ${mobile ? 'mobile-open' : ''}`}>
+      {mobile && <button className="mobile-scrim" onClick={() => setMobile(false)} aria-label="Close navigation" />}
+      <aside className="sidebar">
+        <div className="brand"><span className="brand-mark"><img src={polarisLogo} alt="Polaris School of Technology" /></span></div>
+        <nav aria-label="Main navigation">{groups.map(g => <div key={g}><div className="nav-group">{g}</div>{modules.filter(m => m.group === g).map(m => <button key={m.id} className={view === m.id ? 'active' : ''} onClick={() => go(m.id)} title={m.name} aria-current={view === m.id ? 'page' : undefined}><m.icon size={17} /><span>{m.name}</span>{m.id === 'actions' && !!notifications.data?.length && <b className="nav-count">{notifications.data.length}</b>}</button>)}</div>)}</nav>
+        <button className="collapse-toggle" onClick={() => setCollapsed(c => !c)}><ChevronLeft size={17} /><span>Collapse navigation</span></button>
+        <div className="sidebar-footer"><span className="green-dot" /><span>Connected to PostgreSQL</span></div>
+      </aside>
+      <div className="workspace">
+        <header className="header">
+          <div className="header-top">
+            <button className="icon-button mobile-menu" onClick={() => setMobile(true)} aria-label="Open navigation"><Menu size={20} /></button>
+            <div className="institution"><strong>Polaris School of Technology</strong><span>Bengaluru campus · Institutional Management Information System</span></div>
+            <button className="data-status" onClick={() => setCoverageOpen(true)}><Database size={12} /> {coverage.data?.snapshot === 'Live read-only' ? 'LIVE · READ ONLY' : 'DATABASE SNAPSHOT'}</button>
+            <div className="header-actions">
+              <div className="global-search"><Search size={16} /><input aria-label="Global search" placeholder="Search students, sessions, actions…" value={search} onChange={e => setSearch(e.target.value)} />{searchTerm.length >= 2 && <div className="search-results">{searchResult.isPending ? <Loading /> : searchResult.error ? <ErrorState error={searchResult.error} /> : searchResult.data?.length ? searchResult.data.map(r => <button key={`${r.source}-${r.id}`} onClick={() => openRecord(r.source, { id: r.id, title: r.title })}><strong>{r.title}</strong><span>{r.type}</span></button>) : <p>No results found.</p>}</div>}</div>
+              <button className="icon-button notification-button" onClick={() => setNotifOpen(true)} aria-label="Notifications"><Bell size={18} />{!!notifications.data?.length && <i />}</button>
+              <button className="icon-button" onClick={() => setSettingsOpen(true)} aria-label="Settings"><Settings2 size={18} /></button>
+              <div className="user-chip"><span className="avatar">{user.display_name.split(' ').slice(0, 2).map(p => p[0]).join('')}</span><div><strong>{user.display_name}</strong><small>{user.role}</small></div></div>
+              <button className="icon-button" aria-label="Sign out" onClick={async () => { try { await api('/auth/logout', { method: 'POST' }); client.clear(); onLogout(); } catch (e) { setToast((e as Error).message); } }}><LogOut size={17} /></button>
+            </div>
+          </div>
+          <div className="filters">
+            {filterSelect('Cohort', 'graduation_year_id', options.data?.years)}
+            {filterSelect('Semester', 'semester_id', options.data?.semesters)}
+            <label className="filter">
+              <span>Date range</span>
+              <select value={draftRange} onChange={e => changeDraftRange(e.target.value)}>
+                <option value="today">Today (IST)</option>
+                <option value="7">Last 7 days</option>
+                <option value="14">Last 14 days</option>
+                <option value="28">Last 28 days</option>
+                <option value="56">Last 8 weeks</option>
+                <option value="90">Last 90 days</option>
+                <option value="source">All available dates</option>
+                <option value="custom">Custom range</option>
+              </select>
+            </label>
+            {draftRange === 'custom' && (
+              <div className="date-inputs">
+                <input aria-label="From date" type="date" value={draftFilters.from_date} max={draftFilters.to_date} onChange={e => changeDraftFilter('from_date', e.target.value)} />
+                <span>to</span>
+                <input aria-label="To date" type="date" value={draftFilters.to_date} min={draftFilters.from_date} onChange={e => changeDraftFilter('to_date', e.target.value)} />
+              </div>
+            )}
+            {filterSelect('Program', 'specialization_id', options.data?.programs)}
+            {filterSelect('Batch', 'batch_id', options.data?.batches.filter(b => (!draftFilters.specialization_id || b.specialization_id === draftFilters.specialization_id) && (!draftFilters.graduation_year_id || b.graduation_year_id === draftFilters.graduation_year_id) && (!draftFilters.semester_id || b.semester_ids?.includes(draftFilters.semester_id))))}
+            {filterSelect('Mentor', 'mentor_id', options.data?.mentors)}
+
+            <button
+              type="button"
+              className={`apply-button ${hasPendingChanges ? 'has-changes' : 'applied'} ${isLoadingData ? 'is-loading' : ''}`}
+              onClick={handleApply}
+              disabled={isLoadingData}
+              title={hasPendingChanges ? 'Apply selected filters' : 'Filters are applied. Click to re-apply / refresh.'}
+              aria-label="Apply filters"
+            >
+              {isLoadingData ? (
+                <>
+                  <LoaderCircle className="spin" size={13} />
+                  <span>Applying…</span>
+                </>
+              ) : hasPendingChanges ? (
+                <>
+                  <Filter size={13} />
+                  <span>Apply</span>
+                  <span className="pending-dot" title="Unapplied changes" />
+                </>
+              ) : (
+                <>
+                  <Check size={13} />
+                  <span>Applied</span>
+                </>
+              )}
+            </button>
+
+            <button className="reset-button" onClick={handleReset}>
+              <FilterX size={14} /> Reset{activeCount ? ` (${activeCount})` : ''}
+            </button>
+            <button className="ai-launch" onClick={() => setAiOpen(true)}>
+              <Sparkles size={14} /> Ask Polaris AI
+            </button>
+          </div>
+        </header>
+        <main id="main-content">
+          <div className="breadcrumbs">{selected.group}<span>/</span><strong>{selected.name}</strong></div>
+          {isLoadingData && (
+            <div className="filter-loading-banner" role="status">
+              <LoaderCircle className="spin" size={14} />
+              <span>Applying filters & loading database records…</span>
+            </div>
+          )}
+          <div className="page-title">
+            <div>
+              <div className="page-heading"><selected.icon size={22} /><h1>{selected.name}</h1></div>
+              <p>{selected.description}</p>
+            </div>
+            <div className="page-actions">
+              <button className="button" onClick={() => { syncPresetRange(appliedRange, 'both'); void client.invalidateQueries(); setToast('Refreshing database records…'); }}><RefreshCw size={14} /> Refresh</button>
+              {user.role !== 'viewer' && coverage.data?.snapshot !== 'Live read-only' && (selected.kind || view === 'tickets') && <button className="button primary" onClick={() => view === 'tickets' ? setTicket(true) : setCreate({ kind: selected.kind!, source: view })}><Plus size={15} /> New {view === 'tickets' ? 'ticket' : selected.kind}</button>}
+            </div>
+          </div>
+          <div className="context-line">
+            <span><i className="blue-dot" /> {appliedRange === 'today' ? `${display(appliedFilters.from_date)} · Today (IST)` : `${display(appliedFilters.from_date)} – ${display(appliedFilters.to_date)}`}</span>
+            <span>Source: {coverage.data?.source ?? 'Production database'} · {coverage.data?.snapshot ?? 'Loading'}</span>
+            <button onClick={() => setCoverageOpen(true)}><CircleHelp size={13} /> Data coverage</button>
+          </div>
+          {options.error && <ErrorState error={options.error} retry={() => void options.refetch()} />}
+          {view === 'command' ? (
+            dashboard.isPending ? <Loading /> : dashboard.error ? <ErrorState error={dashboard.error} retry={() => void dashboard.refetch()} /> : dashboard.data && (
+              <DashboardView
+                data={dashboard.data}
+                filters={appliedFilters}
+                onGo={go}
+                onBatch={id => {
+                  const updated = { ...appliedFilters, batch_id: id };
+                  setDraftFilters(updated);
+                  setAppliedFilters(updated);
+                }}
+                onDate={d => {
+                  const updated = { ...appliedFilters, from_date: d, to_date: d };
+                  setDraftFilters(updated);
+                  setDraftRange('custom');
+                  setAppliedFilters(updated);
+                  setAppliedRange('custom');
+                  go('attendance');
+                }}
+              />
+            )
+          ) : (
+            <ModuleView
+              module={selected}
+              selectedTab={tab}
+              setTab={setTab}
+              filters={appliedFilters}
+              dashboard={dashboard.data}
+              openRecord={openRecord}
+              setToast={setToast}
+              onHeatSelect={(batch, date) => {
+                const end = new Date(`${date}T00:00:00`);
+                end.setDate(end.getDate() + 6);
+                const to_date = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+                const updated = { ...appliedFilters, batch_id: batch, from_date: date, to_date };
+                setDraftFilters(updated);
+                setDraftRange('custom');
+                setAppliedFilters(updated);
+                setAppliedRange('custom');
+              }}
+            />
+          )}
+          <footer className="content-footer"><span>Polaris MIS · Institutional Command Center</span><span>Asia/Kolkata · {selectedTab?.missing ? 'Source connection required' : 'Database-backed records'}</span></footer>
+        </main>
+      </div>
+      {toast && <div className="toast" role="status">{toast}<button onClick={() => setToast('')} aria-label="Dismiss message"><X size={15} /></button></div>}
+      {drawer && <DetailDrawer key={`${drawer.source}-${drawer.row.id}`} {...drawer} filters={appliedFilters} user={user} onClose={() => setDrawer(null)} onSaved={saved} onCreate={(title, id) => { setCreate({ kind: 'action', source: view, sourceId: id, title }); setDrawer(null); }} />}
+      {create && <CreateWork {...create} batchId={appliedFilters.batch_id} onClose={() => setCreate(null)} onSaved={saved} />}
+      {ticket && <CreateTicket onClose={() => setTicket(false)} onSaved={saved} />}
+      {settingsOpen && <SettingsDialog user={user} onClose={() => setSettingsOpen(false)} onSaved={saved} />}
+      {coverageOpen && <Dialog title="Data coverage & definitions" onClose={() => setCoverageOpen(false)}>{coverage.isPending ? <Loading /> : coverage.error ? <ErrorState error={coverage.error} /> : coverage.data && <><p className="source-note">{coverage.data.source} · {coverage.data.snapshot}</p><h3>Latest source dates</h3><ul className="coverage-list">{Object.entries(coverage.data.freshness ?? {}).map(([key, value]) => <li key={key}>{key.replaceAll('_', ' ')}: {display(value)}</li>)}</ul><p className="muted">A live connection does not guarantee recent attendance entries. Scheduled sessions and assignment deadlines can be in the future.</p><h3>Available sources</h3><ul className="coverage-list">{coverage.data.available.map(x => <li key={x}>{x}</li>)}</ul><h3>Missing source evidence</h3><ul className="coverage-list missing">{coverage.data.missing.map(x => <li key={x}>{x}</li>)}</ul><p>{coverage.data.workflows}</p><h3>KPI definitions</h3>{dashboard.data?.kpis.map(k => <div className="definition" key={k.key}><strong>{k.label}</strong><p>{k.definition}</p></div>)}</>}</Dialog>}
+      {notifOpen && <Dialog title="Upcoming & overdue work" onClose={() => setNotifOpen(false)}>{notifications.isPending ? <Loading /> : notifications.error ? <ErrorState error={notifications.error} /> : notifications.data?.length ? <div className="priority-list">{notifications.data.map(n => <button key={n.id} onClick={() => { go('actions'); setNotifOpen(false); }}><Badge value={n.severity} /><strong>{String(n.title)}</strong><span>Due {display(n.due_date)}</span></button>)}</div> : <Empty title="No urgent work assigned" message="Open work due within seven days will appear here." />}</Dialog>}
+      {aiOpen && <AIAssistant filters={appliedFilters} user={user} onClose={() => setAiOpen(false)} />}
     </div>
-    {toast && <div className="toast" role="status">{toast}<button onClick={() => setToast('')} aria-label="Dismiss message"><X size={15} /></button></div>}
-    {drawer && <DetailDrawer key={`${drawer.source}-${drawer.row.id}`} {...drawer} filters={filters} user={user} onClose={() => setDrawer(null)} onSaved={saved} onCreate={(title, id) => { setCreate({ kind: 'action', source: view, sourceId: id, title }); setDrawer(null); }} />}
-    {create && <CreateWork {...create} batchId={filters.batch_id} onClose={() => setCreate(null)} onSaved={saved} />}
-    {ticket && <CreateTicket onClose={() => setTicket(false)} onSaved={saved} />}
-    {settingsOpen && <SettingsDialog user={user} onClose={() => setSettingsOpen(false)} onSaved={saved} />}
-    {coverageOpen && <Dialog title="Data coverage & definitions" onClose={() => setCoverageOpen(false)}>{coverage.isPending ? <Loading /> : coverage.error ? <ErrorState error={coverage.error} /> : coverage.data && <><p className="source-note">{coverage.data.source} · {coverage.data.snapshot}</p><h3>Latest source dates</h3><ul className="coverage-list">{Object.entries(coverage.data.freshness ?? {}).map(([key, value]) => <li key={key}>{key.replaceAll('_', ' ')}: {display(value)}</li>)}</ul><p className="muted">A live connection does not guarantee recent attendance entries. Scheduled sessions and assignment deadlines can be in the future.</p><h3>Available sources</h3><ul className="coverage-list">{coverage.data.available.map(x => <li key={x}>{x}</li>)}</ul><h3>Missing source evidence</h3><ul className="coverage-list missing">{coverage.data.missing.map(x => <li key={x}>{x}</li>)}</ul><p>{coverage.data.workflows}</p><h3>KPI definitions</h3>{dashboard.data?.kpis.map(k => <div className="definition" key={k.key}><strong>{k.label}</strong><p>{k.definition}</p></div>)}</>}</Dialog>}
-    {notifOpen && <Dialog title="Upcoming & overdue work" onClose={() => setNotifOpen(false)}>{notifications.isPending ? <Loading /> : notifications.error ? <ErrorState error={notifications.error} /> : notifications.data?.length ? <div className="priority-list">{notifications.data.map(n => <button key={n.id} onClick={() => { go('actions'); setNotifOpen(false); }}><Badge value={n.severity} /><strong>{String(n.title)}</strong><span>Due {display(n.due_date)}</span></button>)}</div> : <Empty title="No urgent work assigned" message="Open work due within seven days will appear here." />}</Dialog>}
-    {aiOpen && <AIAssistant filters={filters} user={user} onClose={() => setAiOpen(false)} />}
-  </div>;
+  );
 }
 
 function ModuleView({module,selectedTab,setTab,filters,dashboard,openRecord,setToast,onHeatSelect}: {module:Module;selectedTab:number;setTab:(i:number)=>void;filters:Filters;dashboard?:Dashboard;openRecord:(s:string,r:Row)=>void;setToast:(s:string)=>void;onHeatSelect:(batch:string,date:string)=>void}) {

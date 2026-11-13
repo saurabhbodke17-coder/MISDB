@@ -316,5 +316,5 @@ export function ChartPanels({view,tab,filters,metric='feedback',granularity='wee
     }
     return 0;
   });
-  return <>{controls}<div className="original-charts">{orderedCharts.map(c=><ChartCard key={c.id} chart={c} onSelect={point=>onSelect?.(c,point)} onPage={c.id==='attendance-5'?setMatrixPage:undefined} heatmapMode={c.id==='trends-5'&&metric==='att'?attendanceHeatmapMode:undefined} onHeatmapMode={c.id==='trends-5'&&metric==='att'?setAttendanceHeatmapMode:undefined} filters={chartFilters}/>)}</div></>;
+  return <>{controls}<div className={`original-charts ${result.isFetching && !result.isPending ? 'is-fetching' : ''}`}>{orderedCharts.map(c=><ChartCard key={c.id} chart={c} onSelect={point=>onSelect?.(c,point)} onPage={c.id==='attendance-5'?setMatrixPage:undefined} heatmapMode={c.id==='trends-5'&&metric==='att'?attendanceHeatmapMode:undefined} onHeatmapMode={c.id==='trends-5'&&metric==='att'?setAttendanceHeatmapMode:undefined} filters={chartFilters}/>)}</div></>;
 }
