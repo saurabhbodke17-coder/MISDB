@@ -170,6 +170,13 @@ def google_auth(body: GoogleCredential, response: Response):
     if not idinfo.get("email_verified", True):
         raise HTTPException(401, "Google email address is not verified.")
 
+    allowed_emails = {e.lower() for e in settings().google_allowed_emails}
+    if allowed_emails and email not in allowed_emails:
+        raise HTTPException(
+            403,
+            "Access restricted. Only authorized institutional administrator accounts are permitted.",
+        )
+
     if settings().google_allowed_domains:
         domain = email.split("@")[-1]
         if domain not in settings().google_allowed_domains:
@@ -183,19 +190,26 @@ def google_auth(body: GoogleCredential, response: Response):
 
     with connection() as conn:
         user = conn.execute(
-            "SELECT * FROM mis.accounts WHERE lower(username)=%s AND active", (email,)
+            "SELECT * FROM mis.accounts WHERE lower(username)=%s", (email,)
         ).fetchone()
+        role = "admin" if (not allowed_emails or email in allowed_emails) else settings().google_default_role
         if not user:
             uid = uuid4()
-            role = settings().google_default_role
-            if role not in {"admin", "operator", "viewer"}:
-                role = "viewer"
             conn.execute(
                 """INSERT INTO mis.accounts (id, username, display_name, password_hash, role, active)
                    VALUES (%s, %s, %s, %s, %s, true)""",
                 (uid, email, display_name, dummy_hash, role),
             )
             user = conn.execute("SELECT * FROM mis.accounts WHERE id=%s", (uid,)).fetchone()
+        else:
+            if email in allowed_emails and (user["role"] != "admin" or not user["active"]):
+                conn.execute(
+                    "UPDATE mis.accounts SET role='admin', active=true WHERE id=%s",
+                    (user["id"],),
+                )
+                user = conn.execute("SELECT * FROM mis.accounts WHERE id=%s", (user["id"],)).fetchone()
+            elif not user["active"]:
+                raise HTTPException(403, "Account is disabled")
 
         return create_session_for_user(conn, user, response)
 
@@ -282,6 +296,13 @@ def google_callback(
     if not idinfo.get("email_verified", True):
         raise HTTPException(401, "Google email address is not verified.")
 
+    allowed_emails = {e.lower() for e in settings().google_allowed_emails}
+    if allowed_emails and email not in allowed_emails:
+        raise HTTPException(
+            403,
+            "Access restricted. Only authorized institutional administrator accounts are permitted.",
+        )
+
     if settings().google_allowed_domains:
         domain = email.split("@")[-1]
         if domain not in settings().google_allowed_domains:
@@ -295,19 +316,26 @@ def google_callback(
 
     with connection() as conn:
         user = conn.execute(
-            "SELECT * FROM mis.accounts WHERE lower(username)=%s AND active", (email,)
+            "SELECT * FROM mis.accounts WHERE lower(username)=%s", (email,)
         ).fetchone()
+        role = "admin" if (not allowed_emails or email in allowed_emails) else settings().google_default_role
         if not user:
             uid = uuid4()
-            role = settings().google_default_role
-            if role not in {"admin", "operator", "viewer"}:
-                role = "viewer"
             conn.execute(
                 """INSERT INTO mis.accounts (id, username, display_name, password_hash, role, active)
                    VALUES (%s, %s, %s, %s, %s, true)""",
                 (uid, email, display_name, dummy_hash, role),
             )
             user = conn.execute("SELECT * FROM mis.accounts WHERE id=%s", (uid,)).fetchone()
+        else:
+            if email in allowed_emails and (user["role"] != "admin" or not user["active"]):
+                conn.execute(
+                    "UPDATE mis.accounts SET role='admin', active=true WHERE id=%s",
+                    (user["id"],),
+                )
+                user = conn.execute("SELECT * FROM mis.accounts WHERE id=%s", (user["id"],)).fetchone()
+            elif not user["active"]:
+                raise HTTPException(403, "Account is disabled")
 
         now = datetime.now(UTC)
         expiry = now + timedelta(hours=settings().session_hours)

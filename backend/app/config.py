@@ -24,8 +24,15 @@ class Settings(BaseSettings):
     ai_max_rows: int = Field(default=200, ge=10, le=1000)
     google_client_id: str | None = None
     google_client_secret: str | None = None
-    google_allowed_domains: list[str] = ["polariscampus.com"]
-    google_default_role: str = "viewer"
+    google_allowed_domains: list[str] = ["polariscampus.com", "classplus.co"]
+    google_allowed_emails: list[str] = [
+        "mukul@classplus.co",
+        "devang@classplus.co",
+        "s.avinash@polariscampus.com",
+        "saurabh.bodke@polariscampus.com",
+        "gurudev.singla@polariscampus.com",
+    ]
+    google_default_role: str = "admin"
 
     @field_validator("google_allowed_domains", mode="before")
     @classmethod
@@ -42,6 +49,23 @@ class Settings(BaseSettings):
             return [d.strip().lstrip("@") for d in v.split(",") if d.strip()]
         if isinstance(v, list):
             return [d.strip().lstrip("@") for d in v if isinstance(d, str) and d.strip()]
+        return v
+
+    @field_validator("google_allowed_emails", mode="before")
+    @classmethod
+    def parse_allowed_emails(cls, v):
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return []
+            if v.startswith("[") and v.endswith("]"):
+                try:
+                    return json.loads(v)
+                except Exception:
+                    pass
+            return [e.strip().lower() for e in v.split(",") if e.strip()]
+        if isinstance(v, list):
+            return [e.strip().lower() for e in v if isinstance(e, str) and e.strip()]
         return v
 
     @model_validator(mode="after")

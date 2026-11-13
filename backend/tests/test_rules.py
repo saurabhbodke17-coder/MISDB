@@ -170,6 +170,7 @@ def test_google_auth_flow(monkeypatch):
 
     # 6. Success when valid email with allowed domain
     monkeypatch.setattr(config.settings(), "google_allowed_domains", ["polariscampus.com"])
+    monkeypatch.setattr(config.settings(), "google_allowed_emails", ["student@polariscampus.com"])
 
     def mock_verify_domain_success(*args, **kwargs):
         return {"email": "student@polariscampus.com", "email_verified": True, "name": "Jane Student"}
@@ -200,3 +201,8 @@ def test_google_auth_flow(monkeypatch):
     assert res.status_code == 200
     assert res.json()["username"] == "student@polariscampus.com"
     assert "polaris_session" in res.cookies
+
+    # 7. Non-whitelisted email gets 403
+    monkeypatch.setattr(config.settings(), "google_allowed_emails", ["saurabh.bodke@polariscampus.com"])
+    res = client.post("/api/auth/google", json={"credential": "sample-dummy-token"})
+    assert res.status_code == 403
