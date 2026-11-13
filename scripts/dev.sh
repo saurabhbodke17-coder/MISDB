@@ -16,6 +16,7 @@ backend/.venv/bin/python - <<'PY'
 import socket
 for port in (8001,5173):
     with socket.socket() as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:sock.bind(('127.0.0.1',port))
         except OSError:raise SystemExit(f'Port {port} is already in use. If Polaris is already running, open http://127.0.0.1:5173 instead.')
 PY

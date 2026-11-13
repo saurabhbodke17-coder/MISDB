@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     gemini_fallback_models: list[str] = ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite"]
     ai_query_timeout_ms: int = Field(default=8000, ge=1000, le=30000)
     ai_max_rows: int = Field(default=200, ge=10, le=1000)
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    google_allowed_domains: list[str] = []
+    google_default_role: str = "viewer"
 
     @model_validator(mode="after")
     def production_security(self):

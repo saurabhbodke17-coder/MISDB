@@ -144,8 +144,7 @@ class ChartContext:
             }.get(dimension, time)
             sql, p = scoped("feedback", f)
             sql = (
-                f"SELECT x.*,sm.name AS semester FROM ({sql}) x "
-                "LEFT JOIN semesters sm ON sm.id=x.semester_id"
+                f"SELECT x.*,sm.name AS semester FROM ({sql}) x LEFT JOIN semesters sm ON sm.id=x.semester_id"
             )
             order = "value DESC,name" if dimension in {"batch", "mentor", "subject", "semester"} else "name"
             rows = query(
@@ -213,8 +212,7 @@ class ChartContext:
                 "semester": "semester",
             }.get(dimension, time)
             sql = (
-                f"SELECT x.*,sm.name AS semester FROM ({sql}) x "
-                "LEFT JOIN semesters sm ON sm.id=x.semester_id"
+                f"SELECT x.*,sm.name AS semester FROM ({sql}) x LEFT JOIN semesters sm ON sm.id=x.semester_id"
             )
             rows = query(
                 f"""SELECT {group} AS name,
@@ -381,31 +379,60 @@ class ChartContext:
         f = self.f
         if domain == "production":
             if mode == "concern_category":
-                return group_chart("concerns", f, "coalesce(category,'Unspecified')",
-                                   note="Production LMS concerns by category. These records do not contain support-ticket owner, resolution timestamp or SLA deadline fields.")
+                return group_chart(
+                    "concerns",
+                    f,
+                    "coalesce(category,'Unspecified')",
+                    note="Production LMS concerns by category. These records do not contain support-ticket owner, resolution timestamp or SLA deadline fields.",
+                )
             if mode == "concern_status":
-                return group_chart("concerns", f, "status",
-                                   note="Current status of concerns created during the selected period; not historical resolution throughput.")
+                return group_chart(
+                    "concerns",
+                    f,
+                    "status",
+                    note="Current status of concerns created during the selected period; not historical resolution throughput.",
+                )
             if mode == "concern_weekly":
-                return group_chart("concerns", f, "date_trunc('week',date)::date",
-                                   note="Production concerns raised each week. Resolution dates are not recorded, so a resolved-per-week series cannot be calculated.")
+                return group_chart(
+                    "concerns",
+                    f,
+                    "date_trunc('week',date)::date",
+                    note="Production concerns raised each week. Resolution dates are not recorded, so a resolved-per-week series cannot be calculated.",
+                )
             if mode == "companies":
-                data = group_chart("internship_placements", f, "coalesce(nullif(trim(company),''),'Company not recorded')",
-                                   note="Placement records by company, not unique students. Dates use record creation. View chart data contains every company.")
+                data = group_chart(
+                    "internship_placements",
+                    f,
+                    "coalesce(nullif(trim(company),''),'Company not recorded')",
+                    note="Placement records by company, not unique students. Dates use record creation. View chart data contains every company.",
+                )
                 data["rows"].sort(key=lambda r: (-r["value"], r["name"]))
                 return data | {"plot_limit": 10}
             if mode == "evaluation_status":
-                return group_chart("ojt_evaluations", f, "status",
-                                   note="Counts only recorded OJT evaluation rows. Evaluated means final marks and evaluated_at are both present; this is not a completion rate for all eligible students.")
+                return group_chart(
+                    "ojt_evaluations",
+                    f,
+                    "status",
+                    note="Counts only recorded OJT evaluation rows. Evaluated means final marks and evaluated_at are both present; this is not a completion rate for all eligible students.",
+                )
             if mode == "allocation_status":
-                return group_chart("ojt_allocations", f, "status",
-                                   note="Current production OJT allocation status; one row per allocation in the selected creation-date range.")
+                return group_chart(
+                    "ojt_allocations",
+                    f,
+                    "status",
+                    note="Current production OJT allocation status; one row per allocation in the selected creation-date range.",
+                )
             if mode == "allocations_by_batch":
-                return group_chart("ojt_allocations", f, "coalesce(batch,'Unspecified')",
-                                   note="Allocation counts by OJT source batch. Completion is not inferred from allocation existence.")
+                return group_chart(
+                    "ojt_allocations",
+                    f,
+                    "coalesce(batch,'Unspecified')",
+                    note="Allocation counts by OJT source batch. Completion is not inferred from allocation existence.",
+                )
             if mode == "milestones":
                 sql, p = scoped("ojt_allocations", f)
-                rows = query(f'''SELECT milestone AS name,count(*) FILTER(WHERE done) AS value
+                rows = query(
+                    f"""SELECT milestone AS name,count(*) FILTER(WHERE done) AS value
                     FROM ({sql}) x CROSS JOIN LATERAL (VALUES
                     ('Industry alignment',milestone_industry_alignment),
                     ('Problem statement',milestone_problem_statement),
@@ -413,8 +440,13 @@ class ChartContext:
                     ('Feature list',milestone_feature_list),
                     ('Tech stack selection',milestone_tech_stack_selection),
                     ('Proposal approved',milestone_proposal_approved)) flags(milestone,done)
-                    GROUP BY milestone ORDER BY milestone''', p)
-                return dataset(rows, note="Recorded milestone flags on scoped allocations. Milestones are independent checks, not a sequential funnel or proof of demo readiness.")
+                    GROUP BY milestone ORDER BY milestone""",
+                    p,
+                )
+                return dataset(
+                    rows,
+                    note="Recorded milestone flags on scoped allocations. Milestones are independent checks, not a sequential funnel or proof of demo readiness.",
+                )
         if domain == "trends":
             if mode == "heatmap":
                 return self.metric_heatmap(self.metric)
@@ -458,10 +490,10 @@ class ChartContext:
                     )
                 if mode == "batch_strength":
                     rows = query(
-                        f'''SELECT batch AS name,
+                        f"""SELECT batch AS name,
                           count(*) FILTER(WHERE status='active') AS "Active",
                           count(*) FILTER(WHERE status='dropped') AS "Dropped"
-                        FROM ({sql}) x GROUP BY batch ORDER BY batch''',
+                        FROM ({sql}) x GROUP BY batch ORDER BY batch""",
                         p,
                     )
                     return dataset(
@@ -510,9 +542,9 @@ class ChartContext:
                 if mode == "delivery_trend":
                     return dataset(
                         query(
-                            f'''SELECT date_trunc('week',date)::date AS name,count(*) AS "Scheduled",
+                            f"""SELECT date_trunc('week',date)::date AS name,count(*) AS "Scheduled",
                               count(*) FILTER(WHERE status='completed') AS "Completed"
-                            FROM ({sql}) x GROUP BY 1 ORDER BY 1''',
+                            FROM ({sql}) x GROUP BY 1 ORDER BY 1""",
                             p,
                         ),
                         ["Scheduled", "Completed"],
@@ -574,7 +606,103 @@ class ChartContext:
                 self.granularity = gran
                 return result
             if mode == "absences":
-                return group_chart("attendance", f, "date::date", "count(*) FILTER(WHERE status='absent')")
+                sql = f"""WITH scoped_batches AS ({BATCH_SCOPE})
+                SELECT 
+                    cs.scheduled_start::date AS date,
+                    cs.id AS session_id,
+                    coalesce(cs.title, su.name) AS title,
+                    su.name AS subject,
+                    su.id AS subject_id,
+                    b.name AS batch,
+                    b.id AS batch_id,
+                    concat('Sem ', sm.number) AS semester,
+                    sm.number AS semester_number,
+                    sm.id AS semester_id,
+                    concat(gy.start_year, '–', gy.end_year) AS cohort,
+                    gy.id AS graduation_year_id,
+                    count(*) FILTER(WHERE ar.status = 'absent') AS absent,
+                    count(*) FILTER(WHERE ar.status = 'present' OR (%(late_counts_present)s AND ar.status = 'late')) AS present,
+                    count(*) FILTER(WHERE ar.status IN ('present', 'late', 'absent')) AS total
+                FROM attendance_records ar
+                JOIN class_sessions cs ON cs.id = ar.session_id
+                JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
+                JOIN batches b ON b.id = coalesce(ar.home_batch_id, bs.batch_id)
+                JOIN year_specialization_semesters yss ON yss.id = bs.year_specialization_semester_id
+                JOIN semesters sm ON sm.id = yss.semester_id
+                JOIN year_specializations ys ON ys.id = yss.year_specialization_id
+                JOIN graduation_years gy ON gy.id = ys.graduation_year_id
+                JOIN subjects su ON su.id = cs.subject_id
+                WHERE cs.counts_for_attendance
+                  AND cs.scheduled_start >= %(from_date)s::date AND cs.scheduled_start < %(to_date)s::date + 1
+                  AND bs.batch_id IN (SELECT id FROM scoped_batches)
+                  AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
+                  AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s)
+                GROUP BY cs.scheduled_start::date, cs.id, coalesce(cs.title, su.name), su.name, su.id, b.name, b.id, sm.number, sm.id, gy.start_year, gy.end_year, gy.id
+                ORDER BY cs.scheduled_start::date, sm.number, b.name, su.name"""
+                p = params(f) | metric_settings()
+                raw_rows = query(sql, p)
+                dates_map = {}
+                subjects_map = {}
+                cohorts_map = {}
+                semesters_map = {}
+                batches_map = {}
+                for r in raw_rows:
+                    d = str(r["date"])
+                    if d not in dates_map:
+                        dates_map[d] = {
+                            "name": d,
+                            "value": 0,
+                            "total_students": 0,
+                            "present_count": 0,
+                            "classes": [],
+                        }
+                    dates_map[d]["value"] += int(r["absent"] or 0)
+                    dates_map[d]["total_students"] += int(r["total"] or 0)
+                    dates_map[d]["present_count"] += int(r["present"] or 0)
+                    dates_map[d]["classes"].append(
+                        {
+                            "id": str(r["session_id"]),
+                            "session_id": str(r["session_id"]),
+                            "title": r["title"],
+                            "subject": r["subject"],
+                            "subject_id": str(r["subject_id"]),
+                            "batch": r["batch"],
+                            "batch_id": str(r["batch_id"]),
+                            "semester": r["semester"],
+                            "semester_number": r["semester_number"],
+                            "semester_id": str(r["semester_id"]),
+                            "cohort": r["cohort"],
+                            "graduation_year_id": str(r["graduation_year_id"]),
+                            "absent": int(r["absent"] or 0),
+                            "present": int(r["present"] or 0),
+                            "total": int(r["total"] or 0),
+                            "rate": round(r["present"] * 100.0 / r["total"], 1) if r["total"] else 0.0,
+                        }
+                    )
+                    subjects_map[str(r["subject_id"])] = r["subject"]
+                    cohorts_map[str(r["graduation_year_id"])] = r["cohort"]
+                    semesters_map[str(r["semester_id"])] = (r["semester"], r["semester_number"])
+                    batches_map[str(r["batch_id"])] = r["batch"]
+
+                return dataset(
+                    list(dates_map.values()),
+                    unit="",
+                    note="Daily class attendance and absence breakdown. Hover over each class section for class-specific attendance records.",
+                    available_subjects=[
+                        {"id": k, "name": v} for k, v in sorted(subjects_map.items(), key=lambda x: x[1])
+                    ],
+                    available_cohorts=[
+                        {"id": k, "name": v} for k, v in sorted(cohorts_map.items(), key=lambda x: x[1])
+                    ],
+                    available_semesters=[
+                        {"id": k, "name": v[0], "number": v[1]}
+                        for k, v in sorted(semesters_map.items(), key=lambda x: x[1][1])
+                    ],
+                    available_batches=[
+                        {"id": k, "name": v} for k, v in sorted(batches_map.items(), key=lambda x: x[1])
+                    ],
+                    render_as="class_absences",
+                )
             if mode == "heatmap":
                 return self.metric_heatmap("att")
             sql, p = scoped("attendance", f)
@@ -602,9 +730,7 @@ class ChartContext:
               WHERE (%(matrix_student_status)s='all' OR status=%(matrix_student_status)s)
               GROUP BY student_id"""
             student_params = student_params | {"matrix_student_status": self.student_status}
-            total = query(f"SELECT count(*) AS total FROM ({roster_sql}) roster", student_params)[0][
-                "total"
-            ]
+            total = query(f"SELECT count(*) AS total FROM ({roster_sql}) roster", student_params)[0]["total"]
             page_students = query(
                 f"""SELECT student_id,student FROM ({roster_sql}) roster
                 ORDER BY lower(student),student_id
@@ -632,7 +758,9 @@ class ChartContext:
                 page=self.matrix_page,
                 page_size=page_size,
                 total=total,
-                row_entities=[{"id": str(row["student_id"]), "name": row["student"]} for row in page_students],
+                row_entities=[
+                    {"id": str(row["student_id"]), "name": row["student"]} for row in page_students
+                ],
                 note=f"{self.student_status.title() if self.student_status != 'all' else 'All'} enrollments in the selected semester and batch, including students without attendance evidence, paged by student name.",
             )
             if page_students:
@@ -1011,9 +1139,7 @@ def charts(
     breakdown: str = Query(default="institution", pattern="^(institution|batch)$"),
     matrix_page: int = Query(default=1, ge=1),
     student_status: str = Query(default="active", pattern="^(active|dropped|all)$"),
-    attendance_heatmap_mode: str = Query(
-        default="percentage", pattern="^(percentage|absolute|unique)$"
-    ),
+    attendance_heatmap_mode: str = Query(default="percentage", pattern="^(percentage|absolute|unique)$"),
     user=Depends(current_user),
 ):
     section = MANIFEST["sections"].get(view)

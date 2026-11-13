@@ -202,9 +202,7 @@ def test_metrics_match_database_and_filters(client):
     assert academic_risk.status_code == 200, academic_risk.text
     assert academic_risk.json()["total"] > 0
     assert all(
-        row["status"] == "active"
-        and row["attendance"] is not None
-        and row["attendance"] < 40
+        row["status"] == "active" and row["attendance"] is not None and row["attendance"] < 40
         for row in academic_risk.json()["rows"]
     )
 
@@ -386,9 +384,7 @@ def test_student_attendance_matrix_pages_complete_active_roster(client):
     assert {row["row_id"] for row in first["rows"]} <= {row["id"] for row in first["row_entities"]}
 
     last_page = (first["total"] + first["page_size"] - 1) // first["page_size"]
-    last_response = client.get(
-        "/api/charts/attendance/matrix", params=PERIOD | {"matrix_page": last_page}
-    )
+    last_response = client.get("/api/charts/attendance/matrix", params=PERIOD | {"matrix_page": last_page})
     assert last_response.status_code == 200, last_response.text
     last = last_response.json()["charts"][0]
     assert last["page"] == last_page
@@ -396,20 +392,21 @@ def test_student_attendance_matrix_pages_complete_active_roster(client):
     assert {row["id"] for row in first["row_entities"]}.isdisjoint(
         {row["id"] for row in last["row_entities"]}
     )
-    dropped = client.get(
-        "/api/charts/attendance/matrix", params=PERIOD | {"student_status": "dropped"}
-    )
+    dropped = client.get("/api/charts/attendance/matrix", params=PERIOD | {"student_status": "dropped"})
     assert dropped.status_code == 200, dropped.text
     dropped_chart = dropped.json()["charts"][0]
     assert dropped_chart["total"] > 0
     assert "Dropped enrollments" in dropped_chart["note"]
-    combined = client.get(
-        "/api/charts/attendance/matrix", params=PERIOD | {"student_status": "all"}
-    ).json()["charts"][0]
+    combined = client.get("/api/charts/attendance/matrix", params=PERIOD | {"student_status": "all"}).json()[
+        "charts"
+    ][0]
     assert combined["total"] >= max(first["total"], dropped_chart["total"])
-    assert client.get(
-        "/api/charts/attendance/matrix", params=PERIOD | {"student_status": "inactive"}
-    ).status_code == 422
+    assert (
+        client.get(
+            "/api/charts/attendance/matrix", params=PERIOD | {"student_status": "inactive"}
+        ).status_code
+        == 422
+    )
 
 
 def test_attendance_heatmap_percentage_absolute_and_unique_modes(client):
@@ -420,9 +417,7 @@ def test_attendance_heatmap_percentage_absolute_and_unique_modes(client):
             params=PERIOD | {"metric": "att", "attendance_heatmap_mode": mode},
         )
         assert response.status_code == 200, response.text
-        charts_by_mode[mode] = next(
-            chart for chart in response.json()["charts"] if chart["id"] == "trends-5"
-        )
+        charts_by_mode[mode] = next(chart for chart in response.json()["charts"] if chart["id"] == "trends-5")
         assert charts_by_mode[mode]["heatmap_mode"] == mode
 
     assert charts_by_mode["percentage"]["unit"] == "%"
@@ -458,21 +453,20 @@ def test_attendance_heatmap_percentage_absolute_and_unique_modes(client):
         ).fetchone()[0]
     assert sample["value"] == expected
     assert sample["total_strength"] == expected_strength
-    assert client.get(
-        "/api/charts/trends/overview",
-        params=PERIOD | {"metric": "att", "attendance_heatmap_mode": "total"},
-    ).status_code == 422
+    assert (
+        client.get(
+            "/api/charts/trends/overview",
+            params=PERIOD | {"metric": "att", "attendance_heatmap_mode": "total"},
+        ).status_code
+        == 422
+    )
 
 
 def test_internship_module_uses_real_batches_students_and_sessions(client):
     summary = client.get("/api/internship-summary", params=PERIOD)
     assert summary.status_code == 200, summary.text
-    students = client.get(
-        "/api/records/internship_students", params=PERIOD | {"page_size": 100}
-    )
-    sessions = client.get(
-        "/api/records/internship_sessions", params=PERIOD | {"page_size": 100}
-    )
+    students = client.get("/api/records/internship_students", params=PERIOD | {"page_size": 100})
+    sessions = client.get("/api/records/internship_sessions", params=PERIOD | {"page_size": 100})
     assert students.status_code == 200, students.text
     assert sessions.status_code == 200, sessions.text
     with psycopg.connect(os.environ.get("TEST_OWNER_DATABASE_URL", settings().database_url)) as c:

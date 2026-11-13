@@ -182,12 +182,12 @@ def coverage(user=Depends(current_user)):
     return {
         "source": settings().source_dump,
         "snapshot": settings().source_snapshot,
-        "freshness": db.one('''SELECT
+        "freshness": db.one("""SELECT
           (SELECT max(marked_at) FROM attendance_records) AS attendance_last_marked,
           (SELECT max(cs.scheduled_start) FROM attendance_records ar
             JOIN class_sessions cs ON cs.id=ar.session_id) AS latest_session_with_attendance,
           (SELECT max(scheduled_start) FROM class_sessions) AS latest_scheduled_session,
-          (SELECT max(due_at) FROM assignments) AS latest_assignment_due'''),
+          (SELECT max(due_at) FROM assignments) AS latest_assignment_due"""),
         "available": [
             "attendance",
             "class scheduling",

@@ -86,15 +86,19 @@ PLAN_SCHEMA = {
 def _gemini(prompt: str) -> dict:
     cfg = settings()
     if not cfg.gemini_api_key:
-        raise HTTPException(503, "Gemini is not configured. Add GEMINI_API_KEY to backend/.env and restart the API.")
-    body = json.dumps({
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "temperature": 0,
-            "responseMimeType": "application/json",
-            "responseSchema": PLAN_SCHEMA,
-        },
-    }).encode()
+        raise HTTPException(
+            503, "Gemini is not configured. Add GEMINI_API_KEY to backend/.env and restart the API."
+        )
+    body = json.dumps(
+        {
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0,
+                "responseMimeType": "application/json",
+                "responseSchema": PLAN_SCHEMA,
+            },
+        }
+    ).encode()
     # Prefer the high-throughput Flash-Lite family for this structured SQL task.
     # Keep the chain configurable so quota/capacity changes do not require a deploy.
     models = list(dict.fromkeys([cfg.gemini_model, *cfg.gemini_fallback_models]))
@@ -229,7 +233,7 @@ Do not expose UUIDs unless needed to disambiguate the displayed result.
 
 REPORTING SCHEMA:\n{SCHEMA}
 CURRENT PAGE FILTERS: {json.dumps(filter_context)}
-RECENT QUESTIONS:\n{history or '(none)'}
+RECENT QUESTIONS:\n{history or "(none)"}
 USER QUESTION: {body.question}
 """
     first = _gemini(base_rules + "\nCreate the best query and a short plain-language explanation.")

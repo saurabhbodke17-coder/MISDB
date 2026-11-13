@@ -14,9 +14,165 @@ import type { Module } from './modules';
 import polarisLogo from '../../Polaris.png';
 import { AIAssistant } from './AIAssistant';
 
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (res: { credential?: string }) => void;
+            auto_select?: boolean;
+            cancel_on_tap_outside?: boolean;
+          }) => void;
+          renderButton: (
+            parent: HTMLElement | null,
+            options: {
+              type?: 'standard' | 'icon';
+              theme?: 'outline' | 'filled_blue' | 'filled_black';
+              size?: 'large' | 'medium' | 'small';
+              text?: 'signin_with' | 'signup_with' | 'continue_with' | 'signin';
+              shape?: 'rectangular' | 'pill' | 'circle' | 'square';
+              logo_alignment?: 'left' | 'center';
+              width?: number | string;
+            }
+          ) => void;
+          prompt?: () => void;
+        };
+      };
+    };
+  }
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style={{flexShrink:0}}>
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+      <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707 0-.59.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961l3.007 2.332c.708-2.127 2.692-3.713 5.036-3.713z" fill="#EA4335"/>
+    </svg>
+  );
+}
+
 function Login({onLogin}:{onLogin:()=>void}) {
   const mutation=useMutation({mutationFn:(body:object)=>api('/auth/login',{method:'POST',body:JSON.stringify(body)}),onSuccess:onLogin});
-  return <main className="login-page"><section className="login-intro"><div className="brand"><span className="brand-mark"><img src={polarisLogo} alt="Polaris School of Technology"/></span></div><span className="eyebrow">INSTITUTIONAL INTELLIGENCE</span><h1>A clear view.<br/>An accountable institution.</h1><p>Connect academic delivery, student progress and operational follow-through in one command center.</p><div className="login-lines"><span/><span/><span/><span/><span/></div><div className="login-footer"><ShieldCheck size={17}/> Database-backed insights. Auditable decisions.</div></section><section className="login-panel"><form onSubmit={e=>{e.preventDefault();mutation.mutate(Object.fromEntries(new FormData(e.currentTarget)));}}><span className="eyebrow">WELCOME BACK</span><h2>Sign in to your workspace</h2><p className="muted">Use your provisioned MIS account to continue.</p><label>Username<input name="username" autoComplete="username" required autoFocus maxLength={200}/></label><label>Password<input name="password" type="password" autoComplete="current-password" required maxLength={1024}/></label>{mutation.error&&<ErrorState error={mutation.error}/>}<button className="button primary" disabled={mutation.isPending}>{mutation.isPending?'Signing in…':'Sign in →'}</button><p className="login-note">Local setup credentials are in <code>local-access.txt</code>. LMS credentials are not reused.</p></form></section></main>;
+  const googleConfig=useQuery({queryKey:['google-config'],queryFn:()=>api<{enabled:boolean;client_id:string;dev_mock?:boolean}>('/auth/google/config')});
+  const [googleNotice,setGoogleNotice]=useState('');
+  const googleMutation=useMutation({
+    mutationFn:(body:{credential:string})=>api('/auth/google',{method:'POST',body:JSON.stringify(body)}),
+    onSuccess:onLogin,
+  });
+
+  useEffect(()=>{
+    const clientId=googleConfig.data?.client_id;
+    if(!clientId||!googleConfig.data?.enabled)return;
+    const initGsi=()=>{
+      if(!window.google?.accounts?.id)return;
+      try{
+        window.google.accounts.id.initialize({
+          client_id:clientId,
+          callback:(res:{credential?:string})=>{
+            if(res.credential)googleMutation.mutate({credential:res.credential});
+          },
+        });
+        const slot=document.getElementById('google-btn-slot');
+        if(slot){
+          slot.innerHTML='';
+          window.google.accounts.id.renderButton(slot,{
+            theme:'outline',
+            size:'large',
+            type:'standard',
+            shape:'rectangular',
+            text:'signin_with',
+            width:355,
+          });
+        }
+      }catch(e){
+        console.error('Failed to initialize Google Sign-In',e);
+      }
+    };
+    if(window.google?.accounts?.id)initGsi();
+    else{
+      const s=document.createElement('script');
+      s.src='https://accounts.google.com/gsi/client';
+      s.async=true;
+      s.defer=true;
+      s.onload=initGsi;
+      document.head.appendChild(s);
+    }
+  },[googleConfig.data?.enabled,googleConfig.data?.client_id]);
+
+  return <main className="login-page">
+    <section className="login-intro">
+      <div className="brand"><span className="brand-mark"><img src={polarisLogo} alt="Polaris School of Technology"/></span></div>
+      <span className="eyebrow">INSTITUTIONAL INTELLIGENCE</span>
+      <h1>A clear view.<br/>An accountable institution.</h1>
+      <p>Connect academic delivery, student progress and operational follow-through in one command center.</p>
+      <div className="login-lines"><span/><span/><span/><span/><span/></div>
+      <div className="login-footer"><ShieldCheck size={17}/> Database-backed insights. Auditable decisions.</div>
+    </section>
+    <section className="login-panel">
+      <div className="login-panel-inner">
+        <span className="eyebrow">WELCOME BACK</span>
+        <h2>Sign in to your workspace</h2>
+        <p className="muted">Use your institutional Google account or provisioned credentials.</p>
+
+        <div className="google-auth-box">
+          {googleConfig.data?.enabled ? (
+            <>
+              <div id="google-btn-slot" className="google-btn-slot" />
+              <noscript>
+                <a href="/api/auth/google/login" className="button google-oauth-link">
+                  <GoogleIcon /> Sign in with Google
+                </a>
+              </noscript>
+            </>
+          ) : googleConfig.data?.dev_mock ? (
+            <>
+              <button
+                type="button"
+                className="button google-btn-unconfigured"
+                disabled={googleMutation.isPending}
+                onClick={() => googleMutation.mutate({ credential: 'mock:faculty.demo@polaris.edu.in' })}
+                title="Click to sign in with local simulated Google Workspace account"
+              >
+                <GoogleIcon />
+                <span>{googleMutation.isPending ? 'Signing in with Google…' : 'Sign in with Google (Dev Demo)'}</span>
+              </button>
+              <div className="google-notice-box">
+                Running in local dev mode. Google OAuth integration is installed. Click above to test immediately, or add your <code>GOOGLE_CLIENT_ID</code> to <code>backend/.env</code> for live Google Cloud sign-in.
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="button google-btn-unconfigured"
+              onClick={() => setGoogleNotice('Google authentication is installed. To enable live sign-in, configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in backend/.env.')}
+            >
+              <GoogleIcon />
+              <span>Sign in with Google</span>
+            </button>
+          )}
+          {googleNotice && <div className="google-notice-box">{googleNotice}</div>}
+          {googleMutation.error && <ErrorState error={googleMutation.error} />}
+          {googleMutation.isPending && !googleConfig.data?.dev_mock && <p className="google-loading">Verifying Google account…</p>}
+        </div>
+
+        <div className="auth-divider">
+          <span>or sign in with password</span>
+        </div>
+
+        <form onSubmit={e=>{e.preventDefault();mutation.mutate(Object.fromEntries(new FormData(e.currentTarget)));}}>
+          <label>Username<input name="username" autoComplete="username" required autoFocus maxLength={200}/></label>
+          <label>Password<input name="password" type="password" autoComplete="current-password" required maxLength={1024}/></label>
+          {mutation.error&&<ErrorState error={mutation.error}/>}
+          <button className="button primary" disabled={mutation.isPending}>{mutation.isPending?'Signing in…':'Sign in →'}</button>
+          <p className="login-note">Local setup credentials are in <code>local-access.txt</code>. LMS credentials are not reused.</p>
+        </form>
+      </div>
+    </section>
+  </main>;
 }
 
 function DashboardView({data,filters,onGo,onBatch,onDate}: {data:Dashboard;filters:Filters;onGo:(id:string)=>void;onBatch:(id:string)=>void;onDate:(date:string)=>void}) {
@@ -99,10 +255,12 @@ function ModuleView({module,selectedTab,setTab,filters,dashboard,openRecord,setT
   const trendSources:Record<string,string>={feedback:'mentor_feedback',att:'attendance',ontime:'sessions',missed:'sessions',assess:'assignments',score:'results',slaIssue:'support',taskOn:'tasks'};
   const source=module.id==='trends'?trendSources[metric]:tab?.source;
   function selectChart(chart:Chart,point:Record<string,unknown>){
-    if(point.id&&chart.source){openRecord(chart.source,{...point,id:String(point.id)});return;}
+    const targetSource = String(point.source || (chart.id === 'attendance-2' || chart.render_as === 'class_absences' ? 'sessions' : chart.source || ''));
+    if(point.id && targetSource){openRecord(targetSource,{...point,id:String(point.id)});return;}
     if(point.batch_id&&point.date){onHeatSelect(String(point.batch_id),String(point.date));return;}
     if(typeof point.name==='string'&&!/^\d{4}-\d{2}-\d{2}/.test(point.name)){setSelection(point.name);return;}
     if(point.row){setSelection(String(point.row));return;}
+    if(point.date){setSelection(String(point.date));return;}
     setToast('Use “View chart data” for the exact plotted values; the register below contains the scoped source records.');
   }
   const isAcademic=['trends','attendance','sla','academic','mentors','assess'].includes(module.id);

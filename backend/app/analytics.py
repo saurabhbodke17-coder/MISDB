@@ -146,6 +146,9 @@ def options(user=Depends(current_user)):
         "mentors": query(
             "SELECT DISTINCT u.id,u.name FROM users u JOIN class_sessions cs ON cs.faculty_id=u.id ORDER BY u.name"
         ),
+        "subjects": query(
+            "SELECT DISTINCT su.id, su.name FROM subjects su JOIN class_sessions cs ON cs.subject_id=su.id ORDER BY su.name"
+        ),
         "data_range": one(
             "SELECT min(d) AS first_date,max(d) AS last_date FROM (SELECT scheduled_start::date d FROM class_sessions UNION ALL SELECT due_at::date FROM assignments UNION ALL SELECT date FROM examinations UNION ALL SELECT start_date FROM academic_calendar UNION ALL SELECT start_date FROM holidays UNION ALL SELECT publish_at::date FROM announcements) dates"
         ),

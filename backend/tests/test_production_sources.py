@@ -38,8 +38,8 @@ def test_external_filters_use_identity_and_do_not_duplicate_rows(monkeypatch):
     monkeypatch.setattr(records, "metric_settings", lambda: {})
     batch = uuid4()
     _, sql, params = records.source_query("ojt_allocations", analytics.Filters(batch_id=batch))
-    assert 'lower(trim(u.email))=r.student_email' in sql
-    assert 'EXISTS (' in sql
+    assert "lower(trim(u.email))=r.student_email" in sql
+    assert "EXISTS (" in sql
     assert params["batch_id"] == batch
     assert "mis." not in sql
 

@@ -54,8 +54,14 @@ def source_query(
         )
     if name == "attendance" and status and status not in {"present", "absent"}:
         raise HTTPException(422, "Attendance status must be present or absent")
-    if name in {"sessions", "internship_sessions"} and status and status not in {"completed", "cancelled", "scheduled", "in_progress"}:
-        raise HTTPException(422, "Class delivery status must be completed, cancelled, scheduled or in progress")
+    if (
+        name in {"sessions", "internship_sessions"}
+        and status
+        and status not in {"completed", "cancelled", "scheduled", "in_progress"}
+    ):
+        raise HTTPException(
+            422, "Class delivery status must be completed, cancelled, scheduled or in progress"
+        )
     attendance_filters = {
         "below40": "r.attendance<40",
         "40to59": "r.attendance>=40 AND r.attendance<60",
@@ -80,23 +86,30 @@ def source_query(
     if risk_status and risk_status not in risk_statuses:
         raise HTTPException(422, "Unknown risk status")
     conditions = ["true"]
-    p = params(f) | metric_settings() | {
-        "search": f"%{search}%",
-        "status_filter": status,
-        "risk_status_filter": risk_status,
-    }
+    p = (
+        params(f)
+        | metric_settings()
+        | {
+            "search": f"%{search}%",
+            "status_filter": status,
+            "risk_status_filter": risk_status,
+        }
+    )
     has_scope = any((f.batch_id, f.specialization_id, f.semester_id, f.graduation_year_id))
     if source.scope == "external_student":
         if has_scope:
-            conditions.append('''EXISTS (
+            conditions.append("""EXISTS (
               SELECT 1 FROM "LMS".users u JOIN "LMS".student_batches sb ON sb.student_id=u.id
               WHERE lower(trim(u.email))=r.student_email AND sb.status='active'
-                AND sb.batch_id IN (SELECT id FROM scoped_batches))''')
+                AND sb.batch_id IN (SELECT id FROM scoped_batches))""")
         if f.mentor_id:
             if name != "ojt_allocations":
-                raise HTTPException(409, "This production source has no verified mentor relationship. Clear the Mentor filter to view these records.")
-            conditions.append('''EXISTS (SELECT 1 FROM "LMS".users u
-              WHERE u.id=%(mentor_id)s AND lower(trim(u.email))=ANY(r.mentor_emails))''')
+                raise HTTPException(
+                    409,
+                    "This production source has no verified mentor relationship. Clear the Mentor filter to view these records.",
+                )
+            conditions.append("""EXISTS (SELECT 1 FROM "LMS".users u
+              WHERE u.id=%(mentor_id)s AND lower(trim(u.email))=ANY(r.mentor_emails))""")
     if source.date_filter and apply_dates:
         conditions.append("r.date >= %(from_date)s::date AND r.date < %(to_date)s::date+1")
     if source.scope in {"batch", "student"}:
@@ -311,6 +324,7 @@ def export(
         score_band=score_band,
         risk_status=risk_status,
     )
+
     def generate_csv():
         stream = io.StringIO()
         writer = csv.writer(stream)
@@ -340,6 +354,37 @@ def detail(name: str, record_id: str, f: Filters = Depends(filters), user=Depend
         raise HTTPException(422, "Invalid record identifier")
     source, sql, p = source_query(name, f, apply_dates=False)
     row = one(f"SELECT * FROM ({sql}) selected WHERE id::text=%(record_id)s", p | {"record_id": record_id})
+    if not row and name == "attendance":
+        try:
+            ses_source, ses_sql, ses_p = source_query("sessions", f, apply_dates=False)
+            row = one(
+                f"SELECT * FROM ({ses_sql}) selected WHERE id::text=%(record_id)s",
+                ses_p | {"record_id": record_id},
+            )
+            if row:
+                source = ses_source
+                name = "sessions"
+        except Exception:
+            pass
     if not row:
         raise HTTPException(404, "Record not found in this filter scope")
+    if name == "sessions":
+        att_stats = one(
+            """
+            SELECT 
+                count(*) FILTER(WHERE status='present' OR (%(late_counts_present)s AND status='late')) AS present_students,
+                count(*) FILTER(WHERE status='absent') AS absent_students,
+                count(*) FILTER(WHERE status IN ('present', 'late', 'absent')) AS total_students
+            FROM attendance_records
+            WHERE session_id = %(session_id)s::uuid
+            """,
+            metric_settings() | {"session_id": record_id},
+        )
+        if att_stats and att_stats.get("total_students"):
+            total = att_stats["total_students"]
+            present = att_stats["present_students"] or 0
+            row["total_students"] = total
+            row["present_students"] = present
+            row["absent_students"] = att_stats["absent_students"] or 0
+            row["attendance_rate"] = f"{round(present * 100.0 / total, 1)}%"
     return {"record": visible(row), "title": source.title}

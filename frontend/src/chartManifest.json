@@ -287,20 +287,20 @@
       ],
       "charts": [
         {
-          "id": "attendance-1",
-          "tab": "daily",
-          "title": "Daily attendance",
-          "type": "line",
-          "provider": "attendance.daily",
-          "reason": null,
-          "source": "attendance"
-        },
-        {
           "id": "attendance-2",
           "tab": "daily",
           "title": "Daily absence count",
           "type": "bar",
           "provider": "attendance.absences",
+          "reason": null,
+          "source": "attendance"
+        },
+        {
+          "id": "attendance-1",
+          "tab": "daily",
+          "title": "Daily attendance",
+          "type": "line",
+          "provider": "attendance.daily",
           "reason": null,
           "source": "attendance"
         },
