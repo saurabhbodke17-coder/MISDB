@@ -7,10 +7,19 @@ import type { Filters, Options } from './api';
 import { Card, Empty, ErrorState, Loading } from './components';
 
 type Point=Record<string,unknown>;
-export type Chart={id:string;title:string;type:string;render_as?:string;provider:string|null;source:string|null;status:'available'|'empty'|'unavailable';rows:Point[];series:string[];unit:string;note:string;stacked?:boolean;target?:number|null;plot_limit?:number;page?:number;page_size?:number;total?:number;row_entities?:{id:string;name:string}[];heatmap_mode?:'percentage'|'absolute'|'unique'};
+export type Chart={id:string;title:string;type:string;render_as?:string;provider:string|null;source:string|null;status:'available'|'empty'|'unavailable';rows:Point[];series:string[];unit:string;note:string;stacked?:boolean;target?:number|null;plot_limit?:number;page?:number;page_size?:number;total?:number;row_entities?:{id:string;name:string}[];heatmap_mode?:'percentage'|'absolute'|'unique';summary?:{avg_absent?:number;avg_present?:number;total_students?:number;days_count?:number}};
 const palette=['#2457d6','#13a0a0','#e0932a','#8656c9','#d14c86','#5f7089','#6fa836'];
 function number(value:unknown){return typeof value==='number'?value:typeof value==='string'&&value.trim()!==''&&Number.isFinite(Number(value))?Number(value):null;}
-function chartColumnLabel(chart:Chart,column:string){if(chart.provider==='feedback.ranking')return {name:'Mentor',value:'Average feedback',feedback_count:'Rating responses'}[column]??humanize(column);return humanize(column);}
+function chartColumnLabel(chart:Chart,column:string){
+  if(chart.provider==='feedback.ranking')return {name:'Mentor',value:'Average feedback',feedback_count:'Rating responses'}[column]??humanize(column);
+  if(chart.provider==='attendance.overall_daily'){
+    if(column==='name'||column==='date')return 'Date';
+    if(column==='value'||column==='absent_students')return 'Absent students';
+    if(column==='present_students')return 'Present students';
+    if(column==='total_students')return 'Total students';
+  }
+  return humanize(column);
+}
 function downloadData(chart:Chart){
   if(chart.id==='attendance-2'||chart.render_as==='class_absences'){
     const classRows=chart.rows.flatMap(r=>{
@@ -278,20 +287,38 @@ function Plot({chart,onSelect,filters}:{chart:Chart;onSelect:(row:Point)=>void;f
     <YAxis dataKey={horizontal?'name':undefined} type={horizontal?'category':'number'} width={horizontal?(chart.id==='trends-4'?60:105):50} domain={!horizontal&&chart.unit==='%'?[0,100]:undefined} tick={{fontSize:10,fill:'var(--muted)'}} tickFormatter={v=>chart.id==='trends-4'?abbreviateWords(v):horizontal&&String(v).length>22?String(v).slice(0,20)+'…':String(v)} tickLine={false} axisLine={false}/>
     {type==='pareto'&&<YAxis yAxisId="cumulative" orientation="right" domain={[0,100]} tick={{fontSize:10,fill:'var(--muted)'}} unit="%"/>}
     {chart.target!=null&&!horizontal&&<ReferenceLine y={chart.target} stroke="#168a5a" strokeDasharray="5 4" label={{value:`Target ${chart.target}${chart.unit}`,fontSize:10,fill:'#168a5a',position:'insideTopRight'}}/>}
-    <Tooltip contentStyle={{background:'var(--surface)',border:'1px solid var(--line)',borderRadius:7,color:'var(--ink)'}} labelFormatter={v=>display(v)}/>
-    {chart.series.map((series,i)=>lines||series==='cumulative'?<Line key={series} dataKey={series} name={series==='value'?chart.title:series} yAxisId={series==='cumulative'?'cumulative':0} type="linear" stroke={palette[i%palette.length]} strokeWidth={2} strokeDasharray={series==='Previous period'?'5 4':undefined} dot={{r:3}} connectNulls={false}/>:<Bar key={series} dataKey={series} name={series==='value'?chart.title:series} stackId={chart.stacked?'workload':undefined} fill={palette[i%palette.length]} radius={horizontal?[0,3,3,0]:[3,3,0,0]} maxBarSize={42}>{chart.series.length===1&&chart.rows.map((_,j)=><Cell key={j} fill={palette[j%palette.length]}/>)}</Bar>)}
+    <Tooltip 
+      contentStyle={{background:'var(--surface)',border:'1px solid var(--line)',borderRadius:7,color:'var(--ink)'}} 
+      labelFormatter={v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}/.test(v)?new Date(`${v.slice(0,10)}T00:00:00`).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):display(v)}
+      formatter={(val: unknown, name: unknown, item: any) => {
+        if(chart.provider==='attendance.overall_daily'){
+          const tot = item?.payload?.total_students;
+          return [`${Number(val).toLocaleString('en-IN')} students${tot ? ` (out of ${Number(tot).toLocaleString('en-IN')})` : ''}`, 'Absent students'];
+        }
+        return [display(val)+(chart.unit?chart.unit:''), chartColumnLabel(chart, String(name))];
+      }}
+    />
+    {chart.series.map((series,i)=>lines||series==='cumulative'?<Line key={series} dataKey={series} name={series==='value'?chart.title:series} yAxisId={series==='cumulative'?'cumulative':0} type="linear" stroke={palette[i%palette.length]} strokeWidth={2} strokeDasharray={series==='Previous period'?'5 4':undefined} dot={{r:3}} connectNulls={false}/>:<Bar key={series} dataKey={series} name={series==='value'?chart.title:series} stackId={chart.stacked?'workload':undefined} fill={chart.provider==='attendance.overall_daily'?'#e0564c':palette[i%palette.length]} radius={horizontal?[0,3,3,0]:[3,3,0,0]} maxBarSize={42}>{chart.series.length===1&&chart.provider!=='attendance.overall_daily'&&chart.rows.map((_,j)=><Cell key={j} fill={palette[j%palette.length]}/>)}</Bar>)}
   </ComposedChart></ResponsiveContainer></div>;
 }
 function ChartCard({chart,onSelect,onPage,heatmapMode,onHeatmapMode,filters}:{chart:Chart;onSelect:(row:Point)=>void;onPage?:(page:number)=>void;heatmapMode?:string;onHeatmapMode?:(mode:string)=>void;filters?:Filters}){
   const [dataOpen,setDataOpen]=useState(false);const columns=[...new Set(chart.rows.flatMap(r=>Object.keys(r)))];
   const isClassAbsence=chart.id==='attendance-2'||chart.render_as==='class_absences';
   const isDailyAttendance=chart.id==='attendance-1';
-  const isWide=['heatmap','gantt'].includes(chart.render_as||chart.type)||isClassAbsence||isDailyAttendance;
+  const isOverallDaily=chart.id==='attendance-overall'||chart.provider==='attendance.overall_daily';
+  const isWide=['heatmap','gantt'].includes(chart.render_as||chart.type)||isClassAbsence||isDailyAttendance||isOverallDaily;
   const cardClasses=[
     isWide?'wide-chart':'',
     isClassAbsence?'class-absence-card':''
   ].filter(Boolean).join(' ');
   return <Card title={chart.title} subtitle={chart.status==='unavailable'?'Source data required':chart.status==='empty'?'Connected · no matching records':'Database-derived · selected filters'} className={cardClasses} action={<div className="chart-card-actions">{onHeatmapMode&&<label className="heatmap-mode"><span>View</span><select aria-label="Attendance heatmap view" value={heatmapMode} onChange={e=>onHeatmapMode(e.target.value)}><option value="percentage">Percentage</option><option value="absolute">Absolute by session</option><option value="unique">Unique attenders</option></select></label>}<span className={`chart-source ${chart.status}`} title={chart.provider||chart.note}>{chart.status==='unavailable'?<Info size={13}/>:<Database size={13}/>}</span></div>}>
+    {chart.summary && (
+      <div className="compact-metrics" style={{margin:'0 0 16px 0'}}>
+        <div><span>Average daily absent students</span><strong>{chart.summary.avg_absent?.toLocaleString('en-IN') ?? '—'}</strong></div>
+        <div><span>Average daily present students</span><strong>{chart.summary.avg_present?.toLocaleString('en-IN') ?? '—'}</strong></div>
+        <div><span>Total active student base</span><strong>{chart.summary.total_students?.toLocaleString('en-IN') ?? '—'}</strong></div>
+      </div>
+    )}
     {chart.status==='unavailable'?<Empty title="Source unavailable for this chart" message={chart.note}/>:!chart.rows.length?<Empty title="No matching source records" message={chart.note||'This chart is connected to the database. No records match the selected filters in the connected production source.'}/>:<Plot chart={{...chart,rows:chart.plot_limit?chart.rows.slice(0,chart.plot_limit):chart.rows}} onSelect={onSelect} filters={filters}/>}
     {chart.note&&chart.status!=='unavailable'&&chart.rows.length>0&&<p className="source-note">{chart.note}</p>}
     {chart.page&&chart.page_size&&chart.total!=null&&<div className="pagination"><span>Students {(chart.page-1)*chart.page_size+1}–{Math.min(chart.page*chart.page_size,chart.total)} of {chart.total} · Page {chart.page} of {Math.max(1,Math.ceil(chart.total/chart.page_size))}</span><div><button className="button small" disabled={chart.page===1} onClick={()=>onPage?.(chart.page!-1)} aria-label="Previous student matrix page"><ChevronLeft size={15}/></button><button className="button small" disabled={chart.page*chart.page_size>=chart.total} onClick={()=>onPage?.(chart.page!+1)} aria-label="Next student matrix page"><ChevronRight size={15}/></button></div></div>}

@@ -607,8 +607,9 @@ function ModuleView({module,selectedTab,setTab,filters,dashboard,openRecord,setT
     setToast('Use “View chart data” for the exact plotted values; the register below contains the scoped source records.');
   }
   const isAcademic = ['trends', 'attendance', 'sla', 'academic', 'mentors', 'assess'].includes(module.id);
+  const hideAcademicKpis = module.id === 'attendance' && tab?.id === 'overall';
   return <>
-    {isAcademic&&dashboard&&<div className="compact-metrics">{dashboard.kpis.filter(k=>['attendance','delivery','completion','score'].includes(k.key)).map(k=><div key={k.key}><span>{k.label}</span><strong>{k.value==null?'—':`${k.value}%`}</strong></div>)}</div>}
+    {isAcademic && !hideAcademicKpis && dashboard && <div className="compact-metrics">{dashboard.kpis.filter(k=>['attendance','delivery','completion','score'].includes(k.key)).map(k=><div key={k.key}><span>{k.label}</span><strong>{k.value==null?'—':`${k.value}%`}</strong></div>)}</div>}
     {module.id==='internship'&&internshipSummary.data&&<div className="compact-metrics"><div><span>Active students</span><strong>{internshipSummary.data.active_students}</strong></div><div><span>Dropped students</span><strong>{internshipSummary.data.dropped_students}</strong></div><div><span>Internship batches</span><strong>{internshipSummary.data.batches}</strong></div><div><span>Sessions in period</span><strong>{internshipSummary.data.sessions}</strong></div><div><span>Session completion</span><strong>{internshipSummary.data.completion_rate==null?'—':`${internshipSummary.data.completion_rate}%`}</strong></div><div><span>On-time starts</span><strong>{internshipSummary.data.on_time_rate==null?'—':`${internshipSummary.data.on_time_rate}%`}</strong></div></div>}
     {module.id==='internship'&&internshipSummary.error&&<ErrorState error={internshipSummary.error} retry={()=>void internshipSummary.refetch()}/>}
     <div className="tabs" role="tablist" aria-label={`${module.name} views`}>{module.tabs.map((t,i)=><button key={t.label} role="tab" aria-selected={i===selectedTab} className={i===selectedTab?'active':''} onClick={()=>setTab(i)}>{t.label}</button>)}</div>

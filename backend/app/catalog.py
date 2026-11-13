@@ -284,6 +284,7 @@ SOURCES = {
         """
         SELECT fr.student_id::text || ':' || fr.session_id::text || ':' || fr.faculty_id::text AS id,
           stu.name AS student,fac.name AS mentor,coalesce(cs.title,su.name) AS session,b.name AS batch,
+          su.name AS subject,
           round(avg(fr.response_text::numeric) FILTER (
             WHERE sq.question_type='rating' AND fr.response_text ~ '^[1-5](\\.0+)?$'
           ),2) AS rating,

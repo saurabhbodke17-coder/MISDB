@@ -373,6 +373,27 @@ def test_advanced_plots(client):
         assert response.status_code == 200, response.text
 
 
+def test_overall_daily_attendance_chart(client):
+    response = client.get("/api/charts/attendance/overall", params=PERIOD)
+    assert response.status_code == 200, response.text
+    charts = response.json()["charts"]
+    assert len(charts) == 1
+    c = charts[0]
+    assert c["id"] == "attendance-overall"
+    assert c["provider"] == "attendance.overall_daily"
+    assert c["status"] == "available"
+    assert c["series"] == ["absent_students"]
+    assert len(c["rows"]) > 0
+    assert "summary" in c
+    assert "avg_absent" in c["summary"]
+    assert "avg_present" in c["summary"]
+    assert "total_students" in c["summary"]
+    for row in c["rows"]:
+        assert "absent_students" in row
+        assert "present_students" in row
+        assert "total_students" in row
+
+
 def test_student_attendance_matrix_pages_complete_active_roster(client):
     first_response = client.get("/api/charts/attendance/matrix", params=PERIOD | {"matrix_page": 1})
     assert first_response.status_code == 200, first_response.text
@@ -505,7 +526,7 @@ def test_all_original_chart_panels_and_calendar(client):
                 if chart["status"] == "unavailable":
                     assert chart["rows"] == []
                     assert chart["note"]
-    assert count == 97
+    assert count == 119
     calendar = client.get("/api/calendar", params=PERIOD)
     assert calendar.status_code == 200, calendar.text
     assert all(e["id"] and e["source"] for e in calendar.json()["events"])

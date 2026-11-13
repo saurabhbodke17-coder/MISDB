@@ -7,6 +7,7 @@ Every original chart family is retained in its corresponding module/tab. A null 
 | exceptions | list | By area | hbar | quality.area |
 | exceptions | list | Exceptions by severity | stacked | quality.severity |
 | exceptions | students | Flags by rule | hbar | risk.rules |
+| attendance | overall | Overall daily student absence | bar | attendance.overall_daily |
 | attendance | daily | Daily attendance | line | attendance.daily |
 | attendance | daily | Daily absence count | bar | attendance.absences |
 | attendance | weekly | Weekly attendance | line | attendance.weekly |
