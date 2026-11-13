@@ -16,8 +16,12 @@
     ],
     "attendance": [
       [
+        "overall",
+        "Overall attendance"
+      ],
+      [
         "daily",
-        "Daily attendance"
+        "Subject-wise attendance"
       ],
       [
         "weekly",

@@ -64,6 +64,14 @@ for title, kind, p in [
     ("Heatmap · batch × week", "heatmap", "trends.heatmap"),
 ]:
     a("trends", "overview", title, kind, p)
+a(
+    "attendance",
+    "overall",
+    "Overall daily student absence",
+    "bar",
+    "attendance.overall_daily",
+    s="attendance",
+)
 a("attendance", "daily", "Daily attendance", "line", "attendance.daily", s="attendance")
 a(
     "attendance",
@@ -415,6 +423,7 @@ a(
 source_map = {
     "exceptions": {"list": "data_quality", "students": "students"},
     "attendance": {
+        "overall": "attendance",
         "daily": "attendance",
         "weekly": "attendance",
         "matrix": "students",
