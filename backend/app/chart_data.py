@@ -142,24 +142,23 @@ class ChartContext:
                 "subject": "subject",
                 "semester": "semester",
             }.get(dimension, time)
-            sql, p = scoped("feedback", f)
+            sql, p = scoped("mentor_feedback", f)
             sql = (
                 f"SELECT x.*,sm.name AS semester FROM ({sql}) x LEFT JOIN semesters sm ON sm.id=x.semester_id"
             )
             order = "value DESC,name" if dimension in {"batch", "mentor", "subject", "semester"} else "name"
             rows = query(
                 f"""SELECT {group} AS name,
-                  round(sum(response::numeric)/nullif(count(*),0),2) AS value,
+                  round(avg(rating), 2) AS value,
                   count(*) AS feedback_count
                 FROM ({sql}) x
-                WHERE question_type='rating' AND response ~ '^[1-5](\\.0+)?$'
                 GROUP BY 1 ORDER BY {order}""",
                 p,
             )
             return dataset(
                 rows,
                 unit="/5",
-                note="Average mentor-feedback rating = sum of valid 1–5 rating responses ÷ number of valid rating responses.",
+                note="Average mentor-feedback rating = mean of student session ratings.",
             )
         if metric == "att":
             group = {
@@ -346,9 +345,9 @@ class ChartContext:
         if metric == "ontime" and self.metric_data("ontime")["status"] == "unavailable":
             return unavailable(TIMING_GAP)
         if metric == "feedback":
-            sql, p = scoped("feedback", self.f)
-            expr = "round(sum(response::numeric)/nullif(count(*),0),2)"
-            condition = "WHERE question_type='rating' AND response ~ '^[1-5](\\.0+)?$'"
+            sql, p = scoped("mentor_feedback", self.f)
+            expr = "round(avg(rating), 2)"
+            condition = ""
         elif metric in {"assess", "score"}:
             sql, p = score_facts(self.f) if metric == "score" else assessment_facts(self.f)
             expr = COMP_RATE if metric == "assess" else SCORE_RATE
@@ -922,31 +921,29 @@ class ChartContext:
                 note="Five explicit risk rules. A student may trigger more than one rule; the student-risk KPI counts distinct students.",
             )
         if domain == "feedback":
-            # Ranking and distribution deliberately share the same scoped feedback projection.
+            # Ranking and distribution share the mentor_feedback projection (student average ratings).
             if mode == "ranking":
                 result = self.metric_data("feedback", "mentor")
                 if result["status"] == "available":
                     result["rows"].sort(key=lambda row: (-(row["value"] or 0), str(row["name"])))
                     result["plot_limit"] = 5
                     result["note"] = (
-                        "Average feedback = sum of valid 1–5 rating responses ÷ number of valid rating responses. "
+                        "Average feedback = mean of student session ratings. "
                         "The chart shows the top five mentors; View all contains every mentor in the selected filters."
                     )
                 return result
-            sql, p = scoped("feedback", f)
-            # Only explicitly numeric 1–5 responses; free text is never converted into a rating.
-            where = "question_type='rating' AND response ~ '^[1-5](\\.0+)?$'"
+            sql, p = scoped("mentor_feedback", f)
             if mode == "selected" and not f.mentor_id:
                 return unavailable("Select a mentor to see that mentor’s feedback distribution.")
             if mode == "trend":
                 rows = query(
-                    f"SELECT date_trunc('week',date)::date AS name,round(avg(response::numeric),2) AS value FROM ({sql}) x WHERE {where} GROUP BY 1 ORDER BY 1",
+                    f"SELECT date_trunc('week',date)::date AS name,round(avg(rating),2) AS value FROM ({sql}) x GROUP BY 1 ORDER BY 1",
                     p,
                 )
                 return dataset(
                     rows,
                     unit="/5",
-                    note="Numeric 1–5 session-feedback responses only. This is session satisfaction, not an institution-wide student/parent survey.",
+                    note="Weekly average student feedback rating.",
                 )
             extra = {}
             if f.mentor_id:
@@ -954,15 +951,14 @@ class ChartContext:
                 if mentor_row and mentor_row.get("name"):
                     extra["title"] = f"Feedback distribution · {mentor_row['name']}"
             rows = query(
-                f"SELECT response::numeric AS name,count(*) AS value FROM ({sql}) x WHERE {where} GROUP BY 1 ORDER BY 1",
+                f"SELECT round(rating)::int AS name,count(*) AS value FROM ({sql}) x GROUP BY 1 ORDER BY 1",
                 p,
             )
-            if rows:
-                count_map = {int(r["name"]): int(r["value"]) for r in rows if r.get("name") is not None}
-                rows = [{"name": score, "value": count_map.get(score, 0)} for score in range(1, 6)]
+            count_map = {int(r["name"]): int(r["value"]) for r in rows if r.get("name") is not None}
+            rows = [{"name": score, "value": count_map.get(score, 0)} for score in range(1, 6)]
             return dataset(
                 rows,
-                note="Only numeric 1–5 responses in the scoped session feedback; no inferred sentiment scores.",
+                note="Distribution of student session ratings (1 row per student submission). Matches the records in the register below.",
                 **extra,
             )
         if domain == "communications":
@@ -1145,7 +1141,7 @@ def charts(
         default="feedback", pattern="^(feedback|att|ontime|missed|assess|score|slaIssue|taskOn)$"
     ),
     granularity: str = Query(default="weekly", pattern="^(daily|weekly|monthly|semester)$"),
-    breakdown: str = Query(default="institution", pattern="^(institution|batch)$"),
+    breakdown: str = Query(default="institution", pattern="^(institution|batch|student|question)$"),
     matrix_page: int = Query(default=1, ge=1),
     student_status: str = Query(default="active", pattern="^(active|dropped|all)$"),
     attendance_heatmap_mode: str = Query(default="percentage", pattern="^(percentage|absolute|unique)$"),

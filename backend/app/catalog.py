@@ -270,7 +270,7 @@ SOURCES = {
         SELECT fr.id,stu.name AS student,u.name AS mentor,coalesce(cs.title,su.name) AS session,
           su.name AS subject,
           sq.question_text AS question,sq.question_type,fr.response_text AS response,
-          b.name AS batch,fr.submitted_at AS date,bs.batch_id,fr.faculty_id AS mentor_id,yss.semester_id
+          b.name AS batch,cs.scheduled_start AS date,fr.submitted_at,bs.batch_id,fr.faculty_id AS mentor_id,yss.semester_id
         FROM session_feedback_responses fr JOIN class_sessions cs ON cs.id=fr.session_id
         JOIN batch_semesters bs ON bs.id=cs.batch_semester_id JOIN year_specialization_semesters yss ON yss.id=bs.year_specialization_semester_id
         JOIN batches b ON b.id=bs.batch_id JOIN subjects su ON su.id=cs.subject_id
@@ -290,7 +290,7 @@ SOURCES = {
           string_agg(fr.response_text,E'\n' ORDER BY sq.display_order) FILTER (
             WHERE sq.question_type='long_text' AND nullif(trim(fr.response_text),'') IS NOT NULL
           ) AS feedback,
-          max(fr.submitted_at) AS date,bs.batch_id,fr.faculty_id AS mentor_id,yss.semester_id
+          cs.scheduled_start AS date,max(fr.submitted_at) AS submitted_at,bs.batch_id,fr.faculty_id AS mentor_id,yss.semester_id
         FROM session_feedback_responses fr
         JOIN session_questions sq ON sq.id=fr.session_question_id
         JOIN class_sessions cs ON cs.id=fr.session_id
@@ -299,13 +299,13 @@ SOURCES = {
         JOIN batches b ON b.id=bs.batch_id JOIN subjects su ON su.id=cs.subject_id
         JOIN users stu ON stu.id=fr.student_id JOIN users fac ON fac.id=fr.faculty_id
         GROUP BY fr.student_id,fr.session_id,fr.faculty_id,stu.name,fac.name,cs.title,su.name,
-          b.name,bs.batch_id,yss.semester_id
+          b.name,bs.batch_id,yss.semester_id,cs.scheduled_start
         HAVING count(*) FILTER (
           WHERE sq.question_type='rating' AND fr.response_text ~ '^[1-5](\\.0+)?$'
         )>0
     """,
         ("student", "mentor", "session", "batch", "rating", "feedback", "date"),
-        note="One row per student submission (mean of 1–5 question ratings). For individual question-by-question ratings (e.g. 32×5★, 7×4★, 2×1★), see the Feedback distribution chart above.",
+        note="One row per student submission. Filtered by scheduled session date.",
     ),
     "support": Source(
         "Support reports",
