@@ -305,7 +305,7 @@ SOURCES = {
         )>0
     """,
         ("student", "mentor", "session", "batch", "rating", "feedback", "date"),
-        note="One row per student, mentor and session. Rating is the mean of explicit 1–5 rating answers; written feedback contains the recorded long-text responses.",
+        note="One row per student submission (mean of 1–5 question ratings). For individual question-by-question ratings (e.g. 32×5★, 7×4★, 2×1★), see the Feedback distribution chart above.",
     ),
     "support": Source(
         "Support reports",

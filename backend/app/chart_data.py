@@ -957,6 +957,9 @@ class ChartContext:
                 f"SELECT response::numeric AS name,count(*) AS value FROM ({sql}) x WHERE {where} GROUP BY 1 ORDER BY 1",
                 p,
             )
+            if rows:
+                count_map = {int(r["name"]): int(r["value"]) for r in rows if r.get("name") is not None}
+                rows = [{"name": score, "value": count_map.get(score, 0)} for score in range(1, 6)]
             return dataset(
                 rows,
                 note="Only numeric 1–5 responses in the scoped session feedback; no inferred sentiment scores.",
