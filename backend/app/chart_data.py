@@ -564,7 +564,7 @@ class ChartContext:
                             f"SELECT delivery_timing AS name,count(*) AS value FROM ({sql}) x GROUP BY delivery_timing ORDER BY delivery_timing",
                             p,
                         ),
-                        note=f"On time means actual start at or before scheduled start plus {p['late_tolerance']} minutes. No-telemetry sessions remain separate.",
+                        note=f"On time includes sessions started within {p['late_tolerance']} minutes and sessions without start telemetry. Delayed means actual start exceeded scheduled start by more than {p['late_tolerance']} minutes.",
                     )
                 if mode == "subjects":
                     return dataset(

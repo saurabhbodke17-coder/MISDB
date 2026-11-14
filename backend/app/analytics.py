@@ -172,8 +172,8 @@ def internship_summary(f: Filters = Depends(filters), user=Depends(current_user)
           SELECT count(*) AS sessions,
             count(*) FILTER(WHERE cs.status='completed') AS completed_sessions,
             count(*) FILTER(WHERE live.actual_start IS NOT NULL) AS sessions_with_telemetry,
-            count(*) FILTER(WHERE live.actual_start IS NOT NULL AND
-              live.actual_start<=cs.scheduled_start AT TIME ZONE 'UTC'+make_interval(mins=>%(late_tolerance)s)) AS on_time_sessions
+            count(*) FILTER(WHERE NOT (live.actual_start IS NOT NULL AND
+              live.actual_start>cs.scheduled_start AT TIME ZONE 'UTC'+make_interval(mins=>%(late_tolerance)s))) AS on_time_sessions
           FROM class_sessions cs
           JOIN batch_semesters bs ON bs.id=cs.batch_semester_id
           JOIN year_specialization_semesters yss ON yss.id=bs.year_specialization_semester_id
@@ -188,7 +188,7 @@ def internship_summary(f: Filters = Depends(filters), user=Depends(current_user)
         SELECT memberships.*,sessions.*,
           round(100.0*completed_sessions/nullif(sessions,0),1) AS completion_rate,
           round(100.0*sessions_with_telemetry/nullif(sessions,0),1) AS telemetry_coverage,
-          round(100.0*on_time_sessions/nullif(sessions_with_telemetry,0),1) AS on_time_rate
+          round(100.0*on_time_sessions/nullif(sessions,0),1) AS on_time_rate
         FROM memberships CROSS JOIN sessions""",
         p,
     )

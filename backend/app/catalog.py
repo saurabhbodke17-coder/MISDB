@@ -170,9 +170,8 @@ SOURCES = {
           concat('Semester ',sem.number) AS semester,su.name AS subject,u.name AS mentor,
           cs.scheduled_start AS date,cs.scheduled_end,cs.status,
           live.actual_start,live.actual_end,
-          CASE WHEN live.actual_start IS NULL THEN 'No telemetry'
-               WHEN live.actual_start<=cs.scheduled_start AT TIME ZONE 'UTC'+make_interval(mins=>%(late_tolerance)s) THEN 'On time'
-               ELSE 'Delayed' END AS delivery_timing,
+          CASE WHEN live.actual_start IS NOT NULL AND live.actual_start>cs.scheduled_start AT TIME ZONE 'UTC'+make_interval(mins=>%(late_tolerance)s) THEN 'Delayed'
+               ELSE 'On time' END AS delivery_timing,
           bs.batch_id,cs.faculty_id AS mentor_id,sem.id AS semester_id,
           ARRAY[]::uuid[] AS linked_batches
         FROM class_sessions cs
@@ -202,7 +201,7 @@ SOURCES = {
             "status",
             "delivery_timing",
         ),
-        note="Scheduled internship-batch sessions and live-session telemetry. No attendance was marked for these sessions in the supplied dump; completion and punctuality do not imply student attendance.",
+        note="Scheduled internship-batch sessions and live-session telemetry. Classes without telemetry are counted as on time unless recorded as starting more than 10 minutes late. No attendance was marked for these sessions in the supplied dump; completion and punctuality do not imply student attendance.",
     ),
     "assignments": Source(
         "Assignment lifecycle",

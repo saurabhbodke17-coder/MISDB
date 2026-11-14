@@ -142,7 +142,7 @@
         {
           "id": "internship-13",
           "tab": "delivery",
-          "title": "On-time, delayed and missing telemetry",
+          "title": "On-time and delayed class delivery",
           "type": "stacked",
           "provider": "internship.timing",
           "reason": null,

@@ -494,7 +494,8 @@ def test_internship_module_uses_real_batches_students_and_sessions(client):
     sessions = client.get("/api/records/internship_sessions", params=PERIOD | {"page_size": 100})
     assert students.status_code == 200, students.text
     assert sessions.status_code == 200, sessions.text
-    with psycopg.connect(os.environ.get("TEST_OWNER_DATABASE_URL", settings().database_url)) as c:
+    target_url = settings().source_database_url or os.environ.get("TEST_OWNER_DATABASE_URL", settings().database_url)
+    with psycopg.connect(target_url, options='-c search_path="LMS",public') as c:
         expected_students = c.execute(
             """SELECT count(*) FROM student_batches sb JOIN batches b ON b.id=sb.batch_id
             JOIN batch_types bt ON bt.id=b.batch_type_id WHERE bt.name='internship'"""
