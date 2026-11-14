@@ -586,17 +586,39 @@ class ChartContext:
         if domain == "attendance":
             if mode == "overall_daily":
                 sql = f"""WITH scoped_batches AS ({BATCH_SCOPE}),
-                session_dates AS (
-                    SELECT DISTINCT cs.scheduled_start::date AS date
+                academic_bounds AS (
+                    SELECT 
+                        greatest(%(from_date)s::date, coalesce(min(cs.scheduled_start::date), %(from_date)s::date)) AS start_date,
+                        least(%(to_date)s::date, coalesce(max(cs.scheduled_start::date), %(to_date)s::date)) AS end_date
+                    FROM class_sessions cs
+                    JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
+                    JOIN year_specialization_semesters yss ON yss.id = bs.year_specialization_semester_id
+                    WHERE cs.counts_for_attendance
+                      AND bs.batch_id IN (SELECT id FROM scoped_batches)
+                      AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
+                      AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s)
+                ),
+                calendar_dates AS (
+                    SELECT d::date AS date
+                    FROM academic_bounds ab,
+                    generate_series(ab.start_date, ab.end_date, interval '1 day') d
+                ),
+                recorded_sessions AS (
+                    SELECT 
+                        cs.scheduled_start::date AS date,
+                        count(ar.id) AS attendance_record_count,
+                        count(DISTINCT cs.id) AS session_count
                     FROM attendance_records ar
                     JOIN class_sessions cs ON cs.id = ar.session_id
                     JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
                     JOIN year_specialization_semesters yss ON yss.id = bs.year_specialization_semester_id
                     WHERE cs.counts_for_attendance
-                      AND cs.scheduled_start >= %(from_date)s::date AND cs.scheduled_start < %(to_date)s::date + 1
+                      AND cs.scheduled_start >= (SELECT start_date FROM academic_bounds) 
+                      AND cs.scheduled_start < (SELECT end_date + 1 FROM academic_bounds)
                       AND bs.batch_id IN (SELECT id FROM scoped_batches)
                       AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
                       AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s)
+                    GROUP BY cs.scheduled_start::date
                 ),
                 intern_joins AS (
                     SELECT sb.student_id, min(sb.joined_at::date) AS intern_join_date
@@ -625,13 +647,13 @@ class ChartContext:
                 ),
                 daily_eligible AS (
                     SELECT 
-                        sd.date,
+                        cd.date,
                         count(DISTINCT am.student_id) AS total_students
-                    FROM session_dates sd
-                    JOIN academic_memberships am ON am.start_date <= sd.date
+                    FROM calendar_dates cd
+                    JOIN academic_memberships am ON am.start_date <= cd.date
                     LEFT JOIN intern_joins ij ON ij.student_id = am.student_id
-                    WHERE ij.intern_join_date IS NULL OR ij.intern_join_date >= sd.date
-                    GROUP BY sd.date
+                    WHERE ij.intern_join_date IS NULL OR ij.intern_join_date >= cd.date
+                    GROUP BY cd.date
                 ),
                 daily_absent AS (
                     SELECT 
@@ -645,7 +667,8 @@ class ChartContext:
                     LEFT JOIN intern_joins ij ON ij.student_id = ar.student_id
                     WHERE cs.counts_for_attendance
                       AND (ar.status = 'absent' OR (NOT %(late_counts_present)s AND ar.status = 'late'))
-                      AND cs.scheduled_start >= %(from_date)s::date AND cs.scheduled_start < %(to_date)s::date + 1
+                      AND cs.scheduled_start >= (SELECT start_date FROM academic_bounds) 
+                      AND cs.scheduled_start < (SELECT end_date + 1 FROM academic_bounds)
                       AND bs.batch_id IN (SELECT id FROM scoped_batches)
                       AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
                       AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s)
@@ -653,13 +676,21 @@ class ChartContext:
                     GROUP BY cs.scheduled_start::date
                 )
                 SELECT 
-                    de.date,
-                    de.total_students,
+                    cd.date,
+                    extract(isodow from cd.date) IN (6, 7) AS is_weekend,
+                    coalesce(rs.attendance_record_count, 0) > 0 AS has_attendance,
+                    coalesce(de.total_students, 0) AS total_students,
                     coalesce(da.absent_students, 0) AS absent_students,
-                    greatest(0, de.total_students - coalesce(da.absent_students, 0)) AS present_students
-                FROM daily_eligible de
-                LEFT JOIN daily_absent da ON da.date = de.date
-                ORDER BY de.date"""
+                    CASE 
+                        WHEN coalesce(rs.attendance_record_count, 0) > 0 
+                        THEN greatest(0, coalesce(de.total_students, 0) - coalesce(da.absent_students, 0))
+                        ELSE 0 
+                    END AS present_students
+                FROM calendar_dates cd
+                LEFT JOIN recorded_sessions rs ON rs.date = cd.date
+                LEFT JOIN daily_eligible de ON de.date = cd.date
+                LEFT JOIN daily_absent da ON da.date = cd.date
+                ORDER BY cd.date"""
                 p = params(f) | metric_settings()
                 raw_rows = query(sql, p)
 
@@ -667,13 +698,23 @@ class ChartContext:
                 total_absent_sum = 0
                 total_present_sum = 0
                 total_eligible_sum = 0
+                recorded_days_count = 0
+                latest_active = 0
                 for r in raw_rows:
-                    absent_cnt = int(r["absent_students"] or 0)
+                    has_att = bool(r["has_attendance"])
+                    is_wknd = bool(r["is_weekend"])
                     tot_cnt = int(r["total_students"] or 0)
-                    present_cnt = max(0, tot_cnt - absent_cnt)
-                    total_absent_sum += absent_cnt
-                    total_present_sum += present_cnt
-                    total_eligible_sum += tot_cnt
+                    absent_cnt = int(r["absent_students"] or 0) if has_att else 0
+                    present_cnt = int(r["present_students"] or 0) if has_att else 0
+                    if has_att:
+                        total_absent_sum += absent_cnt
+                        total_present_sum += present_cnt
+                        total_eligible_sum += tot_cnt
+                        recorded_days_count += 1
+                    if tot_cnt > 0:
+                        latest_active = tot_cnt
+
+                    status = "recorded" if has_att else ("weekend" if is_wknd else "no_attendance")
                     formatted_rows.append(
                         {
                             "name": str(r["date"]),
@@ -682,19 +723,21 @@ class ChartContext:
                             "absent_students": absent_cnt,
                             "present_students": present_cnt,
                             "total_students": tot_cnt,
+                            "has_attendance": has_att,
+                            "is_weekend": is_wknd,
+                            "status": status,
                         }
                     )
 
                 count_days = len(formatted_rows)
-                avg_absent = round(total_absent_sum / count_days) if count_days else 0
-                avg_present = round(total_present_sum / count_days) if count_days else 0
-                latest_active = formatted_rows[-1]["total_students"] if formatted_rows else 0
+                avg_absent = round(total_absent_sum / recorded_days_count) if recorded_days_count else 0
+                avg_present = round(total_present_sum / recorded_days_count) if recorded_days_count else 0
 
                 return dataset(
                     formatted_rows,
                     series=["absent_students"],
                     unit="",
-                    note="Daily count of absent students across the institution. Semester 1 students are included from their batch start date (August 31, 2026). Students are excluded from the attendance pool from the day after joining an internship batch. A student is counted as absent if they missed one or more scheduled sessions on that day.",
+                    note="Daily count of absent students across the institution. Continuous calendar timeline displays all days including weekends and non-instructional days; days without recorded attendance are highlighted. Semester 1 students are included from their batch start date (August 31, 2026). Active internship students are excluded from the attendance pool from the day after joining.",
                     summary={
                         "avg_absent": avg_absent,
                         "avg_present": avg_present,
