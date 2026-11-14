@@ -335,7 +335,12 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
 
   function changeDraftRange(value: string) {
     setDraftRange(value);
-    if (value === 'custom') return;
+    if (value === 'custom') {
+      if (draftRange !== 'custom') {
+        setDraftFilters(f => ({ ...f, from_date: '', to_date: '' }));
+      }
+      return;
+    }
     if (value === 'source' && options.data?.data_range.first_date) {
       setDraftFilters(f => ({
         ...f,
@@ -350,18 +355,31 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
     }
   }
 
+  const isCustomIncomplete = draftRange === 'custom' && (!draftFilters.from_date || !draftFilters.to_date);
   const hasPendingChanges = Boolean(
-    draftRange !== appliedRange ||
-    draftFilters.from_date !== appliedFilters.from_date ||
-    draftFilters.to_date !== appliedFilters.to_date ||
-    draftFilters.graduation_year_id !== appliedFilters.graduation_year_id ||
-    draftFilters.semester_id !== appliedFilters.semester_id ||
-    draftFilters.specialization_id !== appliedFilters.specialization_id ||
-    draftFilters.batch_id !== appliedFilters.batch_id ||
-    draftFilters.mentor_id !== appliedFilters.mentor_id
+    !isCustomIncomplete && (
+      draftRange !== appliedRange ||
+      draftFilters.from_date !== appliedFilters.from_date ||
+      draftFilters.to_date !== appliedFilters.to_date ||
+      draftFilters.graduation_year_id !== appliedFilters.graduation_year_id ||
+      draftFilters.semester_id !== appliedFilters.semester_id ||
+      draftFilters.specialization_id !== appliedFilters.specialization_id ||
+      draftFilters.batch_id !== appliedFilters.batch_id ||
+      draftFilters.mentor_id !== appliedFilters.mentor_id
+    )
   );
 
   function handleApply() {
+    if (draftRange === 'custom') {
+      if (!draftFilters.from_date || !draftFilters.to_date) {
+        setToast('Please select both a start date and an end date.');
+        return;
+      }
+      if (draftFilters.from_date > draftFilters.to_date) {
+        setToast('Start date cannot be after end date.');
+        return;
+      }
+    }
     setIsApplying(true);
     const next = presetDates(draftRange);
     const resolved = next ? { ...draftFilters, ...next } : { ...draftFilters };
@@ -465,9 +483,9 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
             </label>
             {draftRange === 'custom' && (
               <div className="date-inputs">
-                <input aria-label="From date" type="date" value={draftFilters.from_date} max={draftFilters.to_date} onChange={e => changeDraftFilter('from_date', e.target.value)} />
+                <input aria-label="From date" type="date" value={draftFilters.from_date} max={draftFilters.to_date || undefined} onChange={e => changeDraftFilter('from_date', e.target.value)} />
                 <span>to</span>
-                <input aria-label="To date" type="date" value={draftFilters.to_date} min={draftFilters.from_date} onChange={e => changeDraftFilter('to_date', e.target.value)} />
+                <input aria-label="To date" type="date" value={draftFilters.to_date} min={draftFilters.from_date || undefined} onChange={e => changeDraftFilter('to_date', e.target.value)} />
               </div>
             )}
             {filterSelect('Program', 'specialization_id', options.data?.programs)}
@@ -476,10 +494,18 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
 
             <button
               type="button"
-              className={`apply-button ${hasPendingChanges ? 'has-changes' : 'applied'} ${isLoadingData ? 'is-loading' : ''}`}
+              className={`apply-button ${hasPendingChanges ? 'has-changes' : isCustomIncomplete ? 'pending-incomplete' : 'applied'} ${isLoadingData ? 'is-loading' : ''}`}
               onClick={handleApply}
-              disabled={isLoadingData}
-              title={hasPendingChanges ? 'Apply selected filters' : 'Filters are applied. Click to re-apply / refresh.'}
+              disabled={isLoadingData || isCustomIncomplete}
+              title={
+                isLoadingData
+                  ? 'Applying filters…'
+                  : isCustomIncomplete
+                  ? 'Select both start and end dates to apply'
+                  : hasPendingChanges
+                  ? 'Apply selected filters'
+                  : 'Filters are applied. Click to re-apply / refresh.'
+              }
               aria-label="Apply filters"
             >
               {isLoadingData ? (
@@ -487,11 +513,11 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
                   <LoaderCircle className="spin" size={13} />
                   <span>Applying…</span>
                 </>
-              ) : hasPendingChanges ? (
+              ) : (hasPendingChanges || isCustomIncomplete) ? (
                 <>
                   <Filter size={13} />
                   <span>Apply</span>
-                  <span className="pending-dot" title="Unapplied changes" />
+                  {hasPendingChanges && <span className="pending-dot" title="Unapplied changes" />}
                 </>
               ) : (
                 <>
