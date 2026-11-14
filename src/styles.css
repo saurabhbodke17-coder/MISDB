@@ -78,6 +78,7 @@
 .apply-button.has-changes:hover{background:#1d48b2}
 .apply-button.applied{background:var(--surface2);color:var(--secondary);border:1px solid var(--line)}
 .apply-button.applied:hover{background:var(--surface);color:var(--ink);border-color:#aebbd3}
+.apply-button.pending-incomplete{background:var(--surface2);color:var(--muted);border:1px solid var(--line);cursor:not-allowed;opacity:.65}
 .apply-button.is-loading{background:var(--accent);color:#fff;border:1px solid var(--accent);opacity:.9;cursor:wait}
 .apply-button .pending-dot{width:6px;height:6px;border-radius:50%;background:#ffcc00;display:inline-block;margin-left:2px}
 .filter-loading-banner{display:flex;align-items:center;gap:8px;padding:8px 14px;margin:0 0 14px 0;background:var(--surface2);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:5px;color:var(--ink);font-size:11px;font-weight:500}
