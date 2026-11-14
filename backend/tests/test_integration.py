@@ -171,7 +171,7 @@ def test_metrics_match_database_and_filters(client):
     assert all(
         k["value"] == 0
         for k in empty["kpis"]
-        if k["key"] in {"strength", "risk", "tasks", "issues", "breach"}
+        if k["key"] in {"strength", "risk"}
     )
     assert (
         client.get("/api/dashboard", params={"from_date": "2026-10-28", "to_date": "2026-07-01"}).status_code

@@ -436,9 +436,6 @@ def dashboard(f: Filters = Depends(filters), user=Depends(current_user)):
     )
     from .records import source_query
 
-    def count_scope(source, condition="true"):
-        return optional_source_count(source, f, condition)
-
     _, student_sql, student_params = source_query("students", f, apply_dates=False)
     student_counts = one(
         f"SELECT count(DISTINCT student_id) FILTER(WHERE status='active' AND date<%(to_date)s::date+1) AS strength, count(DISTINCT student_id) FILTER(WHERE status='active' AND attendance<%(risk_attendance)s) AS risk FROM ({student_sql}) x",
@@ -465,43 +462,6 @@ def dashboard(f: Filters = Depends(filters), user=Depends(current_user)):
             student_counts["risk"],
             "academic",
             f"Distinct active students with recorded attendance below {cfg['risk_attendance']:g}% in the selected period. Attendance at or above the threshold is No Risk; missing attendance is No attendance evidence.",
-        ),
-        (
-            "tasks",
-            "Operational tasks overdue",
-            count_scope(
-                "tasks",
-                "created_at<%(to_date)s::date+1 AND due_date<%(to_date)s AND (completed_at IS NULL OR completed_at>=%(to_date)s::date+1)",
-            ),
-            "operations",
-            "Overdue entries in the new MIS task register; no historical process records were supplied.",
-        ),
-        (
-            "issues",
-            "Open student/parent issues",
-            count_scope(
-                "support",
-                "date<%(to_date)s::date+1 AND (resolved_at IS NULL OR resolved_at>=%(to_date)s::date+1)",
-            ),
-            "tickets",
-            "Open support reports at period end based on recorded creation and current resolution timestamps. Student concerns remain a separate source.",
-        ),
-        (
-            "breach",
-            "Issues breaching SLA",
-            count_scope(
-                "support",
-                "date<%(to_date)s::date+1 AND sla_due<%(to_date)s::date+1 AND (resolved_at IS NULL OR resolved_at>=%(to_date)s::date+1)",
-            ),
-            "tickets",
-            "Open reports with explicitly assigned SLA deadlines before period end. Untriaged reports are not assumed compliant.",
-        ),
-        (
-            "comp",
-            "Compliance milestones at risk",
-            None,
-            "compliance",
-            "University submission stage and acknowledgement history were not supplied. Generic compliance follow-up items do not establish submitted-versus-unsubmitted milestones.",
         ),
     ]
     for key, label, value, view, definition in extras:
