@@ -247,7 +247,12 @@ SOURCES = {
         """
         SELECT u.id,u.name AS mentor,count(cs.id) AS sessions,
           count(cs.id) FILTER(WHERE cs.status='completed') AS completed,
-          count(ls.actual_start) AS timed_sessions,
+          count(cs.id) FILTER(WHERE ls.actual_start IS NOT NULL OR cs.status='completed') AS timed_sessions,
+          count(cs.id) FILTER(WHERE ls.actual_start IS NOT NULL AND ls.actual_start > cs.scheduled_start AT TIME ZONE 'UTC' + make_interval(mins=>%(late_tolerance)s)) AS delayed_sessions,
+          round(100.0 * (
+            count(cs.id) FILTER(WHERE ls.actual_start IS NOT NULL OR cs.status='completed') -
+            count(cs.id) FILTER(WHERE ls.actual_start IS NOT NULL AND ls.actual_start > cs.scheduled_start AT TIME ZONE 'UTC' + make_interval(mins=>%(late_tolerance)s))
+          ) / nullif(count(cs.id) FILTER(WHERE ls.actual_start IS NOT NULL OR cs.status='completed'), 0), 1) AS on_time_delivery,
           NULL::date AS date,NULL::uuid AS batch_id,u.id AS mentor_id,NULL::uuid AS semester_id
         FROM users u JOIN class_sessions cs ON cs.faculty_id=u.id
         JOIN batch_semesters bs ON bs.id=cs.batch_semester_id
@@ -259,9 +264,9 @@ SOURCES = {
         AND (%(semester_id)s::uuid IS NULL OR yss.semester_id=%(semester_id)s)
         GROUP BY u.id,u.name
     """,
-        ("mentor", "sessions", "completed", "timed_sessions"),
+        ("mentor", "sessions", "completed", "timed_sessions", "delayed_sessions", "on_time_delivery"),
         "aggregate",
-        "Delivery workload from class sessions. No synthetic feedback or SLA scores.",
+        "Delivery workload and on-time adherence. Delays over 10 minutes count as delayed; completed sessions without telemetry count as timed.",
         False,
     ),
     "feedback": Source(

@@ -119,18 +119,19 @@ def test_metrics_match_database_and_filters(client):
     assert kpis["attendance"]["numerator"] > 0
     assert kpis["attendance"]["denominator"] > kpis["attendance"]["numerator"]
     with psycopg.connect(os.environ.get("TEST_OWNER_DATABASE_URL", settings().database_url)) as c:
-        on_time, telemetry = c.execute(
-            """SELECT count(*) FILTER (WHERE ls.actual_start <= cs.scheduled_start AT TIME ZONE 'UTC' + interval '10 minutes'),
-              count(ls.actual_start)
+        on_time, timed = c.execute(
+            """SELECT count(*) FILTER (WHERE (ls.actual_start IS NOT NULL OR cs.status='completed')
+                AND NOT (ls.actual_start IS NOT NULL AND ls.actual_start > cs.scheduled_start AT TIME ZONE 'UTC' + interval '10 minutes')),
+              count(*) FILTER (WHERE ls.actual_start IS NOT NULL OR cs.status='completed')
             FROM class_sessions cs
             LEFT JOIN live_sessions ls ON ls.class_session_id=cs.id
             WHERE cs.scheduled_start::date BETWEEN %s AND %s
               AND cs.scheduled_start < now() AT TIME ZONE 'UTC'""",
             (PERIOD["from_date"], PERIOD["to_date"]),
         ).fetchone()
-    assert kpis["delivery"]["value"] == round(100 * on_time / telemetry, 1)
+    assert kpis["delivery"]["value"] == round(100 * on_time / timed, 1)
     assert kpis["delivery"]["numerator"] == on_time
-    assert kpis["delivery"]["denominator"] == telemetry
+    assert kpis["delivery"]["denominator"] == timed
     assert "10 min grace" in kpis["delivery"]["evidence"]
     with psycopg.connect(os.environ.get("TEST_OWNER_DATABASE_URL", settings().database_url)) as c:
         unresolved, elapsed = c.execute(

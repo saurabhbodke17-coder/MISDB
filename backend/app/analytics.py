@@ -284,8 +284,8 @@ def aggregates(f):
     )
     ,delivery AS (
       SELECT count(*) AS scheduled, count(*) FILTER (WHERE s.status='completed') AS completed,
-      count(*) FILTER (WHERE l.actual_start IS NOT NULL) AS actual_recorded,
-      count(*) FILTER (WHERE l.actual_start IS NOT NULL AND l.actual_start <= s.scheduled_start AT TIME ZONE 'UTC' + make_interval(mins=>%(late_tolerance)s)) AS on_time,
+      count(*) FILTER (WHERE l.actual_start IS NOT NULL OR s.status='completed') AS actual_recorded,
+      count(*) FILTER (WHERE (l.actual_start IS NOT NULL OR s.status='completed') AND NOT (l.actual_start IS NOT NULL AND l.actual_start > s.scheduled_start AT TIME ZONE 'UTC' + make_interval(mins=>%(late_tolerance)s))) AS on_time,
       count(*) FILTER (WHERE s.status='scheduled' AND l.actual_start IS NULL AND l.actual_end IS NULL
         AND NOT EXISTS (SELECT 1 FROM attendance_records ar WHERE ar.session_id=s.id)) AS unresolved
       FROM scoped_sessions s LEFT JOIN LATERAL (
@@ -364,8 +364,8 @@ def dashboard(f: Filters = Depends(filters), user=Depends(current_user)):
                 "target": cfg["delivery_target"],
                 "numerator": r["on_time"],
                 "denominator": r["actual_recorded"],
-                "evidence": f"{r['on_time']:,} / {r['actual_recorded']:,} telemetry starts · {cfg['late_tolerance']} min grace",
-                "definition": f"Sessions whose earliest actual telemetry start is no later than {cfg['late_tolerance']} minutes after the scheduled start / elapsed sessions with actual-start telemetry. Scheduled timestamps are stored as UTC; sessions without start telemetry are reported as coverage gaps and excluded from the rate.",
+                "evidence": f"{r['on_time']:,} / {r['actual_recorded']:,} timed sessions · {cfg['late_tolerance']} min grace",
+                "definition": f"Timed classes started within {cfg['late_tolerance']} minutes of scheduled start. Sessions completed without start telemetry are counted as timed sessions. Sessions delayed by more than {cfg['late_tolerance']} minutes reduce on-time rate.",
                 "module": "sla",
             },
             {

@@ -94,7 +94,7 @@ def score_facts(f):
 
 
 ATT_RATE = "round(100.0*count(*) FILTER(WHERE status='present' OR (%(late_counts_present)s AND status='late'))/nullif(count(*) FILTER(WHERE status IN ('present','late','absent')),0),1)"
-ON_RATE = "round(100.0*count(*) FILTER(WHERE actual_start<=date AT TIME ZONE 'UTC'+make_interval(mins=>%(late_tolerance)s))/nullif(count(actual_start),0),1)"
+ON_RATE = "round(100.0*count(*) FILTER(WHERE (actual_start IS NOT NULL OR status='completed') AND NOT (actual_start IS NOT NULL AND actual_start>date AT TIME ZONE 'UTC'+make_interval(mins=>%(late_tolerance)s)))/nullif(count(*) FILTER(WHERE actual_start IS NOT NULL OR status='completed'),0),1)"
 COMP_RATE = "round(100.0*count(*) FILTER(WHERE submitted_at<=date)/nullif(count(*),0),1)"
 SCORE_RATE = "round(avg(score) FILTER(WHERE graded_at IS NOT NULL),1)"
 TIMING_GAP = "No actual-start telemetry exists for the selected sessions. Scheduled/completed status cannot establish punctuality or a mentor SLA breach."
@@ -178,7 +178,7 @@ class ChartContext:
         if metric == "ontime":
             sql, p = scoped("sessions", f)
             rows = query(
-                f"SELECT count(*) AS total,count(actual_start) AS timed FROM ({sql}) x WHERE date<now() AT TIME ZONE 'UTC'",
+                f"SELECT count(*) AS total,count(*) FILTER(WHERE actual_start IS NOT NULL OR status='completed') AS timed FROM ({sql}) x WHERE date<now() AT TIME ZONE 'UTC'",
                 p,
             )
             if rows[0]["total"] and not rows[0]["timed"]:
@@ -199,7 +199,7 @@ class ChartContext:
                     p,
                 ),
                 unit="%",
-                note=f"On time means actual-start telemetry at or before scheduled UTC start plus {p['late_tolerance']} minutes. Sessions without start telemetry are excluded.",
+                note=f"On time means started within {p['late_tolerance']} minutes of scheduled UTC start. Completed sessions without start telemetry are counted as timed sessions.",
             )
         if metric == "missed":
             sql, p = scoped("sessions", f)
