@@ -264,6 +264,122 @@ function Timeline({chart,onSelect}:{chart:Chart;onSelect:(row:Point)=>void}){
   const dates=chart.rows.flatMap(r=>[Date.parse(String(r.created_at)),Date.parse(String(r.due_date))]);const start=Math.min(...dates);const end=Math.max(...dates,start+86400000);
   return <div className="gantt"><div className="gantt-scale"><span>{display(new Date(start).toISOString())}</span><span>{display(new Date(end).toISOString())}</span></div>{chart.rows.map((r,i)=><button className="gantt-row" key={String(r.id??i)} onClick={()=>onSelect(r)}><span>{String(r.title)}<small>{String(r.owner)}</small></span><div className="gantt-track"><i style={{left:`${(Math.min(Date.parse(String(r.created_at)),Date.parse(String(r.due_date)))-start)/(end-start)*100}%`,width:`${Math.max(1,Math.abs(Date.parse(String(r.due_date))-Date.parse(String(r.created_at)))/(end-start)*100)}%`,background:palette[i%palette.length]}}/></div><span className="small-text">{String(r.status)}</span></button>)}</div>;
 }
+function AttendanceDailyBar(props: any) {
+  const { x, y, width, height, payload } = props;
+  if (!payload || x == null || y == null) return null;
+  
+  const hasAtt = payload.has_attendance ?? (payload.status === 'recorded');
+  if (hasAtt) {
+    return (
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        rx={3}
+        ry={3}
+        fill="#e0564c"
+      />
+    );
+  }
+
+  const inset = Math.max(0.5, Math.min(1.5, width * 0.12));
+  const barX = x + inset;
+  const barW = Math.max(2, width - inset * 2);
+  const baseline = y;
+  
+  // Unified yellow for all non-scheduled/unrecorded days (weekdays & weekends)
+  const themeColor = '#eab308';
+  const pillHeight = 14;
+  const pillY = baseline - pillHeight;
+
+  return (
+    <rect
+      x={barX}
+      y={pillY}
+      width={barW}
+      height={pillHeight}
+      rx={2}
+      ry={2}
+      fill={themeColor}
+      className="attendance-base-indicator"
+    />
+  );
+}
+
+function AttendanceOverallTooltip({ active, payload, label }: any) {
+  if (!active || !payload || !payload.length) return null;
+  const data = payload[0]?.payload;
+  if (!data) return null;
+
+  const dateStr = typeof label === 'string' && /^\d{4}-\d{2}-\d{2}/.test(label)
+    ? new Date(`${label.slice(0, 10)}T00:00:00`).toLocaleDateString('en-IN', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    : String(label);
+
+  const hasAtt = data.has_attendance ?? (data.status === 'recorded');
+  const isWeekend = data.is_weekend ?? (data.status === 'weekend');
+  const tot = data.total_students ? Number(data.total_students).toLocaleString('en-IN') : null;
+
+  return (
+    <div style={{
+      background: 'var(--surface)',
+      border: '1px solid var(--line)',
+      borderRadius: 8,
+      padding: '10px 14px',
+      color: 'var(--ink)',
+      boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+      minWidth: 210,
+    }}>
+      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, color: 'var(--ink)' }}>
+        {dateStr}
+      </div>
+      {hasAtt ? (
+        <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+          <div style={{ color: '#e0564c', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+            <span>Absent students:</span>
+            <strong>{Number(data.absent_students ?? data.value).toLocaleString('en-IN')}{tot ? ` (out of ${tot})` : ''}</strong>
+          </div>
+          <div style={{ color: '#38bdf8', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+            <span>Present students:</span>
+            <strong>{Number(data.present_students ?? 0).toLocaleString('en-IN')}</strong>
+          </div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '2px 8px',
+            borderRadius: 4,
+            background: 'rgba(234, 179, 8, 0.2)',
+            color: '#facc15',
+            fontWeight: 500,
+            marginBottom: 4,
+          }}>
+            <span>●</span>
+            <span>{isWeekend ? 'Weekend (No scheduled classes)' : 'No attendance recorded'}</span>
+          </div>
+          <div style={{ color: 'var(--muted)', fontSize: 11, marginTop: 4 }}>
+            {isWeekend ? 'Saturday / Sunday · No classes scheduled' : 'Non-instructional day / Holiday / Unrecorded'}
+          </div>
+          {tot && (
+            <div style={{ color: 'var(--muted)', fontSize: 11, marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Eligible student base:</span>
+              <span>{tot} students</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Plot({chart,onSelect,filters}:{chart:Chart;onSelect:(row:Point)=>void;filters?:Filters}){
   const type=chart.render_as||chart.type;
   if(type==='class_absences'||chart.id==='attendance-2')return <ClassAbsenceChart chart={chart} onSelect={onSelect} globalFilters={filters}/>;
@@ -281,24 +397,23 @@ function Plot({chart,onSelect,filters}:{chart:Chart;onSelect:(row:Point)=>void;f
   }
   if(type==='scatter')return <div className="chart"><ResponsiveContainer width="100%" height="100%"><ScatterChart margin={{top:15,right:25,bottom:20,left:0}}><CartesianGrid stroke="var(--line)" strokeDasharray="3 3"/><XAxis dataKey="x" name="Attendance" type="number" domain={[0,100]} unit="%" tick={{fontSize:10,fill:'var(--muted)'}}/><YAxis dataKey="y" name="Average score" type="number" domain={[0,100]} unit="%" tick={{fontSize:10,fill:'var(--muted)'}}/><Tooltip contentStyle={{background:'var(--surface)',border:'1px solid var(--line)'}}/><Scatter data={chart.rows} fill={palette[0]} onClick={p=>{if(p?.payload)onSelect(p.payload as Point);}}/></ScatterChart></ResponsiveContainer></div>;
   const horizontal=type==='hbar';const lines=type==='line'||type==='spark';
+  const isOverallDaily=chart.provider==='attendance.overall_daily';
   return <div className={`chart ${horizontal&&chart.rows.length>6?'tall-chart':''}`}><ResponsiveContainer width="100%" height="100%"><ComposedChart data={chart.rows} layout={horizontal?'vertical':'horizontal'} margin={{top:15,right:type==='pareto'?20:25,bottom:10,left:horizontal?65:-15}} onClick={state=>{if(state?.activeLabel!=null){const point=chart.rows.find(r=>String(r.name)===String(state.activeLabel));if(point)onSelect(point);}}}>
     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)"/>
     <XAxis dataKey={horizontal?undefined:'name'} type={horizontal?'number':'category'} domain={horizontal&&chart.unit==='/5'?[0,5]:undefined} tickFormatter={v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}/.test(v)?new Date(`${v.slice(0,10)}T00:00:00`).toLocaleDateString('en-IN',{month:'short',day:'numeric'}):String(v).length>22?String(v).slice(0,20)+'…':String(v)} tickLine={false} axisLine={false} tick={{fontSize:10,fill:'var(--muted)'}} minTickGap={20}/>
     <YAxis dataKey={horizontal?'name':undefined} type={horizontal?'category':'number'} width={horizontal?(chart.id==='trends-4'?60:105):50} domain={!horizontal&&chart.unit==='%'?[0,100]:undefined} tick={{fontSize:10,fill:'var(--muted)'}} tickFormatter={v=>chart.id==='trends-4'?abbreviateWords(v):horizontal&&String(v).length>22?String(v).slice(0,20)+'…':String(v)} tickLine={false} axisLine={false}/>
     {type==='pareto'&&<YAxis yAxisId="cumulative" orientation="right" domain={[0,100]} tick={{fontSize:10,fill:'var(--muted)'}} unit="%"/>}
     {chart.target!=null&&!horizontal&&<ReferenceLine y={chart.target} stroke="#168a5a" strokeDasharray="5 4" label={{value:`Target ${chart.target}${chart.unit}`,fontSize:10,fill:'#168a5a',position:'insideTopRight'}}/>}
-    <Tooltip 
-      contentStyle={{background:'var(--surface)',border:'1px solid var(--line)',borderRadius:7,color:'var(--ink)'}} 
-      labelFormatter={v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}/.test(v)?new Date(`${v.slice(0,10)}T00:00:00`).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):display(v)}
-      formatter={(val: unknown, name: unknown, item: any) => {
-        if(chart.provider==='attendance.overall_daily'){
-          const tot = item?.payload?.total_students;
-          return [`${Number(val).toLocaleString('en-IN')} students${tot ? ` (out of ${Number(tot).toLocaleString('en-IN')})` : ''}`, 'Absent students'];
-        }
-        return [display(val)+(chart.unit?chart.unit:''), chartColumnLabel(chart, String(name))];
-      }}
-    />
-    {chart.series.map((series,i)=>lines||series==='cumulative'?<Line key={series} dataKey={series} name={series==='value'?chart.title:series} yAxisId={series==='cumulative'?'cumulative':0} type="linear" stroke={palette[i%palette.length]} strokeWidth={2} strokeDasharray={series==='Previous period'?'5 4':undefined} dot={{r:3}} connectNulls={false}/>:<Bar key={series} dataKey={series} name={series==='value'?chart.title:series} stackId={chart.stacked?'workload':undefined} fill={chart.provider==='attendance.overall_daily'?'#e0564c':palette[i%palette.length]} radius={horizontal?[0,3,3,0]:[3,3,0,0]} maxBarSize={42}>{chart.series.length===1&&chart.provider!=='attendance.overall_daily'&&chart.rows.map((_,j)=><Cell key={j} fill={palette[j%palette.length]}/>)}</Bar>)}
+    {isOverallDaily ? (
+      <Tooltip content={<AttendanceOverallTooltip />} />
+    ) : (
+      <Tooltip 
+        contentStyle={{background:'var(--surface)',border:'1px solid var(--line)',borderRadius:7,color:'var(--ink)'}} 
+        labelFormatter={v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}/.test(v)?new Date(`${v.slice(0,10)}T00:00:00`).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):display(v)}
+        formatter={(val: unknown, name: unknown) => [display(val)+(chart.unit?chart.unit:''), chartColumnLabel(chart, String(name))]}
+      />
+    )}
+    {chart.series.map((series,i)=>lines||series==='cumulative'?<Line key={series} dataKey={series} name={series==='value'?chart.title:series} yAxisId={series==='cumulative'?'cumulative':0} type="linear" stroke={palette[i%palette.length]} strokeWidth={2} strokeDasharray={series==='Previous period'?'5 4':undefined} dot={{r:3}} connectNulls={false}/>:<Bar key={series} dataKey={series} name={series==='value'?chart.title:series} stackId={chart.stacked?'workload':undefined} fill={isOverallDaily?'#e0564c':palette[i%palette.length]} radius={horizontal?[0,3,3,0]:[3,3,0,0]} maxBarSize={42} shape={isOverallDaily?<AttendanceDailyBar />:undefined}>{chart.series.length===1&&!isOverallDaily&&chart.rows.map((_,j)=><Cell key={j} fill={palette[j%palette.length]}/>)}</Bar>)}
   </ComposedChart></ResponsiveContainer></div>;
 }
 function ChartCard({chart,onSelect,onPage,heatmapMode,onHeatmapMode,filters}:{chart:Chart;onSelect:(row:Point)=>void;onPage?:(page:number)=>void;heatmapMode?:string;onHeatmapMode?:(mode:string)=>void;filters?:Filters}){
@@ -317,6 +432,18 @@ function ChartCard({chart,onSelect,onPage,heatmapMode,onHeatmapMode,filters}:{ch
         <div><span>Average daily absent students</span><strong>{chart.summary.avg_absent?.toLocaleString('en-IN') ?? '—'}</strong></div>
         <div><span>Average daily present students</span><strong>{chart.summary.avg_present?.toLocaleString('en-IN') ?? '—'}</strong></div>
         <div><span>Total active student base</span><strong>{chart.summary.total_students?.toLocaleString('en-IN') ?? '—'}</strong></div>
+      </div>
+    )}
+    {isOverallDaily && (
+      <div style={{display:'flex',gap:18,alignItems:'center',fontSize:12,color:'var(--muted)',marginBottom:14,flexWrap:'wrap'}}>
+        <span style={{display:'inline-flex',alignItems:'center',gap:6}}>
+          <span style={{display:'inline-block',width:10,height:10,borderRadius:2,background:'#e0564c'}} />
+          <span>Recorded class absence</span>
+        </span>
+        <span style={{display:'inline-flex',alignItems:'center',gap:6}}>
+          <span style={{display:'inline-block',width:10,height:10,borderRadius:2,background:'#eab308'}} />
+          <span>No attendance recorded / Weekend / No class scheduled</span>
+        </span>
       </div>
     )}
     {chart.status==='unavailable'?<Empty title="Source unavailable for this chart" message={chart.note}/>:!chart.rows.length?<Empty title="No matching source records" message={chart.note||'This chart is connected to the database. No records match the selected filters in the connected production source.'}/>:<Plot chart={{...chart,rows:chart.plot_limit?chart.rows.slice(0,chart.plot_limit):chart.rows}} onSelect={onSelect} filters={filters}/>}
