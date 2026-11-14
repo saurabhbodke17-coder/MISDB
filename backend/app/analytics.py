@@ -198,13 +198,90 @@ def aggregates(f):
     p = params(f) | metric_settings()
     return one(
         f"""WITH scoped_batches AS ({BATCH_SCOPE}), scoped_sessions AS ({SESSION_SCOPE}),
+    attendance_session_dates AS (
+      SELECT DISTINCT cs.scheduled_start::date AS date
+      FROM attendance_records ar
+      JOIN class_sessions cs ON cs.id = ar.session_id
+      JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
+      JOIN year_specialization_semesters yss ON yss.id = bs.year_specialization_semester_id
+      WHERE cs.counts_for_attendance
+        AND cs.scheduled_start >= %(from_date)s::date AND cs.scheduled_start < %(to_date)s::date + 1
+        AND bs.batch_id IN (SELECT id FROM scoped_batches)
+        AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
+        AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s)
+    ),
+    intern_joins AS (
+      SELECT sb.student_id, min(sb.joined_at::date) AS intern_join_date
+      FROM student_batches sb
+      JOIN batches b ON b.id = sb.batch_id
+      JOIN batch_types bt ON bt.id = b.batch_type_id
+      WHERE bt.name = 'internship' AND sb.status = 'active'
+      GROUP BY sb.student_id
+    ),
+    academic_memberships AS (
+      SELECT sb.student_id, min(bs.start_date) AS start_date
+      FROM student_batches sb
+      JOIN batches b ON b.id = sb.batch_id
+      JOIN batch_types bt ON bt.id = b.batch_type_id
+      JOIN batch_semesters bs ON bs.batch_id = b.id
+      JOIN year_specialization_semesters yss ON yss.id = bs.year_specialization_semester_id
+      WHERE sb.status = 'active'
+        AND bt.name = 'academics'
+        AND b.id IN (SELECT id FROM scoped_batches)
+        AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
+        AND (%(mentor_id)s::uuid IS NULL OR EXISTS (
+            SELECT 1 FROM class_sessions mcs 
+            WHERE mcs.batch_semester_id = bs.id AND mcs.faculty_id = %(mentor_id)s
+        ))
+      GROUP BY sb.student_id
+    ),
+    daily_eligible AS (
+      SELECT 
+        sd.date,
+        count(DISTINCT am.student_id) AS total_students
+      FROM attendance_session_dates sd
+      JOIN academic_memberships am ON am.start_date <= sd.date
+      LEFT JOIN intern_joins ij ON ij.student_id = am.student_id
+      WHERE ij.intern_join_date IS NULL OR ij.intern_join_date >= sd.date
+      GROUP BY sd.date
+    ),
+    daily_absent AS (
+      SELECT 
+        cs.scheduled_start::date AS date,
+        count(DISTINCT ar.student_id) AS absent_students
+      FROM attendance_records ar
+      JOIN class_sessions cs ON cs.id = ar.session_id
+      JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
+      JOIN year_specialization_semesters yss ON yss.id = bs.year_specialization_semester_id
+      JOIN academic_memberships am ON am.student_id = ar.student_id AND am.start_date <= cs.scheduled_start::date
+      LEFT JOIN intern_joins ij ON ij.student_id = ar.student_id
+      WHERE cs.counts_for_attendance
+        AND (ar.status = 'absent' OR (NOT %(late_counts_present)s AND ar.status = 'late'))
+        AND cs.scheduled_start >= %(from_date)s::date AND cs.scheduled_start < %(to_date)s::date + 1
+        AND bs.batch_id IN (SELECT id FROM scoped_batches)
+        AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
+        AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s)
+        AND (ij.intern_join_date IS NULL OR ij.intern_join_date >= cs.scheduled_start::date)
+      GROUP BY cs.scheduled_start::date
+    ),
+    daily_combined AS (
+      SELECT 
+        de.date,
+        de.total_students,
+        coalesce(da.absent_students, 0) AS absent_students,
+        greatest(0, de.total_students - coalesce(da.absent_students, 0)) AS present_students
+      FROM daily_eligible de
+      LEFT JOIN daily_absent da ON da.date = de.date
+    ),
     attendance AS (
-      SELECT count(*) FILTER (WHERE ar.status='present' OR (%(late_counts_present)s AND ar.status='late')) AS present,
-             count(*) FILTER (WHERE ar.status IN ('present','late','absent')) AS eligible,
-             count(*) AS recorded
-      FROM attendance_records ar JOIN scoped_sessions s ON s.id=ar.session_id
-      WHERE s.counts_for_attendance AND (ar.home_batch_id IN (SELECT id FROM scoped_batches) OR
-        (ar.home_batch_id IS NULL AND EXISTS (SELECT 1 FROM student_batches sb WHERE sb.student_id=ar.student_id AND sb.batch_id IN (SELECT id FROM scoped_batches)))))
+      SELECT 
+        coalesce(sum(present_students), 0) AS present,
+        coalesce(sum(total_students), 0) AS eligible,
+        coalesce(sum(absent_students), 0) AS absent,
+        count(*) AS days_count,
+        count(*) AS recorded
+      FROM daily_combined
+    )
     ,delivery AS (
       SELECT count(*) AS scheduled, count(*) FILTER (WHERE s.status='completed') AS completed,
       count(*) FILTER (WHERE l.actual_start IS NOT NULL) AS actual_recorded,
@@ -271,7 +348,12 @@ def dashboard(f: Filters = Depends(filters), user=Depends(current_user)):
                 "target": cfg["attendance_target"],
                 "numerator": r["present"],
                 "denominator": r["eligible"],
-                "definition": "Present (and late when enabled) / present, late and absent attendance records. Unrecorded students are not inferred as absent.",
+                "evidence": (
+                    f"{r['present']:,} / {r['eligible']:,} present student-days across {r['days_count']} days"
+                    if r.get("days_count")
+                    else f"{r['present']:,} / {r['eligible']:,} present student-days"
+                ),
+                "definition": "Weighted institutional attendance rate based on daily presence. A student is counted as present only if they attended all scheduled sessions on that day; interns and unstarted cohorts are excluded.",
                 "module": "attendance",
             },
             {

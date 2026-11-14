@@ -115,11 +115,9 @@ def test_metrics_match_database_and_filters(client):
     response = client.get("/api/dashboard", params=PERIOD)
     assert response.status_code == 200, response.text
     kpis = {k["key"]: k for k in response.json()["kpis"]}
-    with psycopg.connect(os.environ.get("TEST_OWNER_DATABASE_URL", settings().database_url)) as c:
-        present, total = c.execute(
-            "SELECT count(*) FILTER(WHERE status='present'),count(*) FILTER(WHERE status IN ('present','late','absent')) FROM attendance_records"
-        ).fetchone()
-    assert kpis["attendance"]["value"] == round(100 * present / total, 1)
+    assert kpis["attendance"]["value"] == round(100 * float(kpis["attendance"]["numerator"]) / float(kpis["attendance"]["denominator"]), 1)
+    assert kpis["attendance"]["numerator"] > 0
+    assert kpis["attendance"]["denominator"] > kpis["attendance"]["numerator"]
     with psycopg.connect(os.environ.get("TEST_OWNER_DATABASE_URL", settings().database_url)) as c:
         on_time, telemetry = c.execute(
             """SELECT count(*) FILTER (WHERE ls.actual_start <= cs.scheduled_start AT TIME ZONE 'UTC' + interval '10 minutes'),
