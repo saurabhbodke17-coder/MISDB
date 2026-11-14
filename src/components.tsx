@@ -14,7 +14,7 @@ export function ErrorState({error, retry}: {error: Error | null; retry?: () => v
 export function Badge({value}: {value: unknown}) {
   const text = String(value ?? 'Unknown');
   const lower = text.toLowerCase();
-  const tone = /critical|absent|blocked|missing|reopened|high risk|follow-up|overdue/.test(lower) ? 'bad' : /present|completed|verified|resolved|approved|matched|no risk/.test(lower) ? 'good' : /pending|progress|medium|scheduled|acknowledged|awaiting/.test(lower) ? 'warn' : 'neutral';
+  const tone = /critical|absent|blocked|missing|reopened|high risk|follow-up|overdue|delayed/.test(lower) ? 'bad' : /present|completed|verified|resolved|approved|matched|no risk|on time/.test(lower) ? 'good' : /pending|progress|medium|scheduled|acknowledged|awaiting/.test(lower) ? 'warn' : 'neutral';
   return <span className={`badge ${tone}`}>{text}</span>;
 }
 export function KpiCard({kpi, onClick}: {kpi: Kpi; onClick: () => void}) {
