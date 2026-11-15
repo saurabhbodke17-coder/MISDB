@@ -21,9 +21,9 @@ export function KpiCard({kpi, onClick}: {kpi: Kpi; onClick: () => void}) {
   const good = kpi.target == null || (kpi.value != null && kpi.value >= kpi.target);
   return <button className="kpi" onClick={onClick}>
     <span className="kpi-label"><span className="kpi-title">{kpi.label}</span><span title={kpi.definition} aria-label={kpi.definition}><CircleHelp size={14}/></span></span>
-    <span className="kpi-number">{kpi.value == null ? '—' : kpi.unit==='%'?kpi.value.toFixed(1):kpi.value.toLocaleString('en-IN')}{kpi.value != null && <small>{kpi.unit}</small>}</span>
-    <span className={`kpi-change ${kpi.delta == null ? '' : kpi.delta >= 0 ? 'positive' : 'negative'}`}>{kpi.delta == null ? 'No comparable prior-period data' : <>{kpi.delta>=0?<ArrowUpRight size={15}/>:<ArrowDownRight size={15}/>} {Math.abs(kpi.delta).toFixed(1)} pp vs previous period</>}</span>
-    <span className="kpi-footer"><i className={kpi.value == null ? 'gray-dot' : good ? 'green-dot' : 'amber-dot'}/>{kpi.value == null ? 'Insufficient source data' : kpi.evidence ?? (kpi.target==null?'Recorded count':`Target ${kpi.target}%`)}<span>View details →</span></span>
+    <span className="kpi-number">{kpi.value == null ? '—' : kpi.unit === '%' ? kpi.value.toFixed(1) : kpi.unit === '/ 5' ? kpi.value.toFixed(2) : kpi.value.toLocaleString('en-IN')}{kpi.value != null && <small>{kpi.unit.startsWith('/') ? ` ${kpi.unit}` : kpi.unit}</small>}</span>
+    <span className={`kpi-change ${kpi.delta == null ? '' : kpi.delta >= 0 ? 'positive' : 'negative'}`}>{kpi.delta == null ? 'No comparable prior-period data' : <>{kpi.delta >= 0 ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />} {kpi.unit === '/ 5' ? Math.abs(kpi.delta).toFixed(2) : Math.abs(kpi.delta).toFixed(1)}{kpi.unit === '%' ? ' pp' : ''} vs previous period</>}</span>
+    <span className="kpi-footer"><i className={kpi.value == null ? 'gray-dot' : good ? 'green-dot' : 'amber-dot'}/>{kpi.value == null ? 'Insufficient source data' : kpi.evidence ?? (kpi.target == null ? 'Recorded count' : `Target ${kpi.target}%`)}<span>View details →</span></span>
   </button>;
 }
 const colors=['#2457d6','#13a0a0','#e0932a','#8656c9','#d14c86','#5f7089'];

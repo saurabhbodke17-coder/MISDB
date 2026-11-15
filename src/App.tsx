@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useIsFetching, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, Check, ChevronDown, ChevronLeft, CircleHelp, Database, Filter, FilterX, LoaderCircle, LogOut, Menu, Plus, RefreshCw, Search, Settings2, ShieldCheck, Sparkles, TriangleAlert, X } from 'lucide-react';
 import { api, display, initialFilters, istRange, queryString } from './api';
@@ -622,6 +622,7 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
               selectedTab={tab}
               setTab={setTab}
               filters={appliedFilters}
+              options={options.data}
               dashboard={dashboard.data}
               openRecord={openRecord}
               setToast={setToast}
@@ -652,11 +653,67 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   );
 }
 
-function ModuleView({module,selectedTab,setTab,filters,dashboard,openRecord,setToast,onHeatSelect}: {module:Module;selectedTab:number;setTab:(i:number)=>void;filters:Filters;dashboard?:Dashboard;openRecord:(s:string,r:Row)=>void;setToast:(s:string)=>void;onHeatSelect:(batch:string,date:string)=>void}) {
+function ModuleView({module,selectedTab,setTab,filters,options,dashboard,openRecord,setToast,onHeatSelect}: {module:Module;selectedTab:number;setTab:(i:number)=>void;filters:Filters;options?:Options;dashboard?:Dashboard;openRecord:(s:string,r:Row)=>void;setToast:(s:string)=>void;onHeatSelect:(batch:string,date:string)=>void}) {
   const tab=module.tabs[selectedTab]||module.tabs[0];
   const [metric,setMetric]=useState('feedback');const [granularity,setGranularity]=useState('weekly');const [selection,setSelection]=useState('');const [breakdown,setBreakdown]=useState('institution');
+
+  const [trendsCohort, setTrendsCohort] = useState(filters.graduation_year_id || '');
+  const [trendsSemester, setTrendsSemester] = useState(filters.semester_id || '');
+  const [trendsBatch, setTrendsBatch] = useState(filters.batch_id || '');
+
+  useEffect(() => {
+    setTrendsCohort(filters.graduation_year_id || '');
+    setTrendsSemester(filters.semester_id || '');
+    setTrendsBatch(filters.batch_id || '');
+  }, [filters.graduation_year_id, filters.semester_id, filters.batch_id]);
+
+  const trendsBatches = useMemo(() => {
+    return options?.batches.filter(b =>
+      (!trendsCohort || b.graduation_year_id === trendsCohort) &&
+      (!trendsSemester || b.semester_ids?.includes(trendsSemester))
+    ) || [];
+  }, [options?.batches, trendsCohort, trendsSemester]);
+
+  const handleCohortChange = (cohortId: string) => {
+    setTrendsCohort(cohortId);
+    if (trendsBatch) {
+      const stillValid = options?.batches.some(b =>
+        b.id === trendsBatch &&
+        (!cohortId || b.graduation_year_id === cohortId) &&
+        (!trendsSemester || b.semester_ids?.includes(trendsSemester))
+      );
+      if (!stillValid) setTrendsBatch('');
+    }
+  };
+
+  const handleSemesterChange = (semesterId: string) => {
+    setTrendsSemester(semesterId);
+    if (trendsBatch) {
+      const stillValid = options?.batches.some(b =>
+        b.id === trendsBatch &&
+        (!trendsCohort || b.graduation_year_id === trendsCohort) &&
+        (!semesterId || b.semester_ids?.includes(semesterId))
+      );
+      if (!stillValid) setTrendsBatch('');
+    }
+  };
+
+  const effectiveFilters = useMemo(() => {
+    if (module.id === 'trends') {
+      return {
+        ...filters,
+        graduation_year_id: trendsCohort,
+        semester_id: trendsSemester,
+        batch_id: trendsBatch,
+      };
+    }
+    return filters;
+  }, [filters, module.id, trendsCohort, trendsSemester, trendsBatch]);
+
+  const hasTrendsLocalFilters = Boolean(trendsCohort || trendsSemester || trendsBatch);
+
   const internshipSummary=useQuery({queryKey:['internship-summary',filters],queryFn:()=>api<{active_students:number;dropped_students:number;batches:number;sessions:number;completed_sessions:number;completion_rate:number|null;telemetry_coverage:number|null;on_time_rate:number|null}>(`/internship-summary?${queryString(filters)}`),enabled:module.id==='internship'});
-  useEffect(()=>setSelection(''),[module.id,tab?.id,filters]);
+  useEffect(()=>setSelection(''),[module.id,tab?.id,effectiveFilters]);
   const trendSources:Record<string,string>={feedback:'mentor_feedback',att:'attendance',ontime:'sessions',missed:'sessions',assess:'assignments',score:'results',slaIssue:'support',taskOn:'tasks'};
   const source=module.id==='trends'?trendSources[metric]:tab?.source;
   function selectChart(chart:Chart,point:Record<string,unknown>){
@@ -687,17 +744,39 @@ function ModuleView({module,selectedTab,setTab,filters,dashboard,openRecord,setT
     {module.id==='internship'&&internshipSummary.data&&<div className="compact-metrics"><div><span>Active Interns</span><strong>{internshipSummary.data.active_students}</strong></div><div><span>Dropped Interns</span><strong>{internshipSummary.data.dropped_students}</strong></div><div><span>Active Batches</span><strong>{internshipSummary.data.batches}</strong></div><div><span>Scheduled Classes</span><strong>{internshipSummary.data.sessions}</strong></div><div><span>Class Completion Rate</span><strong>{internshipSummary.data.completion_rate==null?'—':`${internshipSummary.data.completion_rate}%`}</strong></div><div><span>On-Time Start Rate</span><strong>{internshipSummary.data.on_time_rate==null?'—':`${internshipSummary.data.on_time_rate}%`}</strong></div></div>}
     {module.id==='internship'&&internshipSummary.error&&<ErrorState error={internshipSummary.error} retry={()=>void internshipSummary.refetch()}/>}
     <div className="tabs" role="tablist" aria-label={`${module.name} views`}>{module.tabs.map((t,i)=><button key={t.label} role="tab" aria-selected={i===selectedTab} className={i===selectedTab?'active':''} onClick={()=>setTab(i)}>{t.label}</button>)}</div>
-    {module.id==='trends'&&<div className="chart-controls"><label>Metric <select value={metric} onChange={e=>setMetric(e.target.value)}>{Object.entries({feedback:'Mentor feedback rating',att:'Attendance',ontime:'On-time class delivery',missed:'Missed-class rate',assess:'Assessment completion',score:'Average score',slaIssue:'Issue SLA compliance',taskOn:'On-time task completion'}).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Interval <select value={granularity} onChange={e=>setGranularity(e.target.value)}>{['daily','weekly','monthly','semester'].map(g=><option key={g}>{g}</option>)}</select></label></div>}
+    {module.id==='trends'&&(
+      <div className="chart-controls">
+        <label>Metric <select value={metric} onChange={e=>setMetric(e.target.value)}>{Object.entries({feedback:'Mentor feedback rating',att:'Attendance',ontime:'On-time class delivery',missed:'Missed-class rate',assess:'Assessment completion',score:'Average score',slaIssue:'Issue SLA compliance',taskOn:'On-time task completion'}).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
+        <label>Interval <select value={granularity} onChange={e=>setGranularity(e.target.value)}>{['daily','weekly','monthly','semester'].map(g=><option key={g}>{g}</option>)}</select></label>
+        <label>Cohort <select value={trendsCohort} onChange={e=>handleCohortChange(e.target.value)}><option value="">All cohorts</option>{options?.years?.map(y=><option key={y.id} value={y.id}>{y.name}</option>)}</select></label>
+        <label>Semester <select value={trendsSemester} onChange={e=>handleSemesterChange(e.target.value)}><option value="">All semesters</option>{options?.semesters?.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+        <label>Batch <select value={trendsBatch} onChange={e=>setTrendsBatch(e.target.value)}><option value="">All batches</option>{trendsBatches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+        {hasTrendsLocalFilters && (
+          <button
+            type="button"
+            className="clear-local-filters"
+            onClick={() => {
+              setTrendsCohort('');
+              setTrendsSemester('');
+              setTrendsBatch('');
+            }}
+            title="Clear cohort, semester, and batch filters"
+          >
+            Clear filters ×
+          </button>
+        )}
+      </div>
+    )}
     {module.id==='calendar'&&tab?.id==='calendar'&&<CalendarBoard filters={filters} onOpen={openRecord}/>}
     {module.id==='attendance'&&['daily','weekly'].includes(tab?.id||'')&&<div className="chart-controls"><label>Attendance series <select value={breakdown} onChange={e=>setBreakdown(e.target.value)}><option value="institution">Institution-wide</option><option value="batch">By batch</option></select></label></div>}
     {module.id==='attendance'&&tab?.id==='risk' ? (
       <StudentsAtRiskView filters={filters} onOpen={openRecord} setToast={setToast} />
     ) : (
       <>
-        <ChartPanels view={module.id} tab={tab?.id||'overview'} filters={filters} metric={metric} granularity={granularity} breakdown={breakdown} onSelect={selectChart}/>
+        <ChartPanels view={module.id} tab={tab?.id||'overview'} filters={effectiveFilters} metric={metric} granularity={granularity} breakdown={breakdown} onSelect={selectChart}/>
         {tab?.id==='rules'&&<Card title="Exception & risk rules"><div className="rules-panel"><h3>Evidence-based checks</h3><p>Completed classes without actual start timestamps and unmatched examination results are flagged from the source records.</p><p>Student risk currently uses one rule: recorded attendance below 40% is High Risk. Attendance at or above 40% is No Risk. Missing attendance remains unclassified as No attendance evidence and does not create an assumed risk.</p></div></Card>}
         {selection&&<div className="selection-chip">Chart selection: {selection}<button onClick={()=>setSelection('')}>Clear ×</button></div>}
-        {source?<Register key={`${module.id}-${tab?.id}-${source}`} source={source} filters={filters} onOpen={openRecord} onError={setToast} showCharts={false} externalSearch={selection} preset={`${module.id}:${tab?.id}`}/>:tab?.missing&&<Card title={tab.label}><Empty title="Additional source data required" message={tab.missing}/></Card>}
+        {source?<Register key={`${module.id}-${tab?.id}-${source}`} source={source} filters={effectiveFilters} onOpen={openRecord} onError={setToast} showCharts={false} externalSearch={selection} preset={`${module.id}:${tab?.id}`}/>:tab?.missing&&<Card title={tab.label}><Empty title="Additional source data required" message={tab.missing}/></Card>}
       </>
     )}
   </>;
