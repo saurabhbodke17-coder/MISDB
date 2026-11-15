@@ -14,13 +14,13 @@ export function ErrorState({error, retry}: {error: Error | null; retry?: () => v
 export function Badge({value}: {value: unknown}) {
   const text = String(value ?? 'Unknown');
   const lower = text.toLowerCase();
-  const tone = /critical|absent|blocked|missing|reopened|high risk|follow-up|overdue|delayed/.test(lower) ? 'bad' : /present|completed|verified|resolved|approved|matched|no risk|on time/.test(lower) ? 'good' : /pending|progress|medium|scheduled|acknowledged|awaiting/.test(lower) ? 'warn' : 'neutral';
+  const tone = /critical|absent|blocked|missing|missed|reopened|high risk|at risk|follow-up|overdue|delayed/.test(lower) ? 'bad' : /present|completed|verified|resolved|approved|matched|no risk|on time/.test(lower) ? 'good' : /pending|progress|ongoing|medium|scheduled|acknowledged|awaiting/.test(lower) ? 'warn' : 'neutral';
   return <span className={`badge ${tone}`}>{text}</span>;
 }
 export function KpiCard({kpi, onClick}: {kpi: Kpi; onClick: () => void}) {
   const good = kpi.target == null || (kpi.value != null && kpi.value >= kpi.target);
   return <button className="kpi" onClick={onClick}>
-    <span className="kpi-label">{kpi.label}<span title={kpi.definition} aria-label={kpi.definition}><CircleHelp size={14}/></span></span>
+    <span className="kpi-label"><span className="kpi-title">{kpi.label}</span><span title={kpi.definition} aria-label={kpi.definition}><CircleHelp size={14}/></span></span>
     <span className="kpi-number">{kpi.value == null ? '—' : kpi.unit==='%'?kpi.value.toFixed(1):kpi.value.toLocaleString('en-IN')}{kpi.value != null && <small>{kpi.unit}</small>}</span>
     <span className={`kpi-change ${kpi.delta == null ? '' : kpi.delta >= 0 ? 'positive' : 'negative'}`}>{kpi.delta == null ? 'No comparable prior-period data' : <>{kpi.delta>=0?<ArrowUpRight size={15}/>:<ArrowDownRight size={15}/>} {Math.abs(kpi.delta).toFixed(1)} pp vs previous period</>}</span>
     <span className="kpi-footer"><i className={kpi.value == null ? 'gray-dot' : good ? 'green-dot' : 'amber-dot'}/>{kpi.value == null ? 'Insufficient source data' : kpi.evidence ?? (kpi.target==null?'Recorded count':`Target ${kpi.target}%`)}<span>View details →</span></span>

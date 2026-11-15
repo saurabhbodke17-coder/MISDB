@@ -18,6 +18,20 @@ function chartColumnLabel(chart:Chart,column:string){
     if(column==='present_students')return 'Present students';
     if(column==='total_students')return 'Total students';
   }
+  if(chart.provider==='assessment.subject_completion'){
+    if(column==='name')return 'Subject';
+    if(column==='value')return 'Completion rate';
+    if(column==='on_time')return 'On-time submissions';
+    if(column==='submitted')return 'Total submissions';
+    if(column==='eligible')return 'Eligible obligations';
+  }
+  if(chart.provider==='assessment.submission_trend'){
+    if(column==='name'||column==='date')return 'Week / Date';
+  }
+  if(chart.provider==='assessment.submission_status'){
+    if(column==='name')return 'Submission status';
+    if(column==='value')return 'Student assignments';
+  }
   return humanize(column);
 }
 function downloadData(chart:Chart){
@@ -416,7 +430,258 @@ function Plot({chart,onSelect,filters}:{chart:Chart;onSelect:(row:Point)=>void;f
     {chart.series.map((series,i)=>lines||series==='cumulative'?<Line key={series} dataKey={series} name={series==='value'?chart.title:series} yAxisId={series==='cumulative'?'cumulative':0} type="linear" stroke={palette[i%palette.length]} strokeWidth={2} strokeDasharray={series==='Previous period'?'5 4':undefined} dot={{r:3}} connectNulls={false}/>:<Bar key={series} dataKey={series} name={series==='value'?chart.title:series} stackId={chart.stacked?'workload':undefined} fill={isOverallDaily?'#e0564c':palette[i%palette.length]} radius={horizontal?[0,3,3,0]:[3,3,0,0]} maxBarSize={42} shape={isOverallDaily?<AttendanceDailyBar />:undefined}>{chart.series.length===1&&!isOverallDaily&&chart.rows.map((_,j)=><Cell key={j} fill={palette[j%palette.length]}/>)}</Bar>)}
   </ComposedChart></ResponsiveContainer></div>;
 }
-function ChartCard({chart,onSelect,onPage,heatmapMode,onHeatmapMode,filters}:{chart:Chart;onSelect:(row:Point)=>void;onPage?:(page:number)=>void;heatmapMode?:string;onHeatmapMode?:(mode:string)=>void;filters?:Filters}){
+function dynamicTitle(chart: Chart, view?: string, granularity?: string, breakdown?: string, metric?: string): string {
+  const interval = granularity ? granularity.charAt(0).toUpperCase() + granularity.slice(1) : 'Weekly';
+  if (view === 'command') {
+    if (chart.id === 'command-1' || chart.provider === 'attendance.weekly') {
+      if (breakdown === 'batch') {
+        return `${interval} Batch-Wise Attendance Trend`;
+      }
+      return `${interval} Student Attendance Trend`;
+    }
+    if (chart.id === 'command-2' || chart.provider === 'delivery.weekly') {
+      return 'On-Time Class Delivery Trend';
+    }
+    if (chart.id === 'command-3' || chart.provider === 'assessment.completion') {
+      return 'Assignment Completion Trend';
+    }
+    if (chart.id === 'command-5' || chart.provider === 'support.sla') {
+      return 'Support Ticket SLA Compliance Trend';
+    }
+    if (chart.id === 'command-6' || chart.provider === 'support.open_resolved') {
+      return 'Student Issues: Logged vs Resolved Trend';
+    }
+    if (chart.id === 'command-7' || chart.provider === 'tasks.overdue_trend') {
+      return 'Overdue Operational Tasks Trend';
+    }
+  }
+  if (view === 'internship') {
+    if (chart.id === 'internship-1' || chart.provider === 'internship.enrollment_status') {
+      return 'Intern Enrollment Status: Active vs Dropped';
+    }
+    if (chart.id === 'internship-2') {
+      return 'Intern Headcount by Batch';
+    }
+    if (chart.id === 'internship-3' || chart.provider === 'internship.joined') {
+      return chart.id === 'internship-9'
+        ? `${interval} Intern Onboarding Timeline`
+        : `${interval} Intern Onboarding Trend`;
+    }
+    if (chart.id === 'internship-4') {
+      return 'Academic Attendance Bands of Interns';
+    }
+    if (chart.id === 'internship-5' || chart.id === 'internship-11' || chart.provider === 'internship.delivery_status') {
+      return 'Session Delivery Status Breakdown';
+    }
+    if (chart.id === 'internship-6') {
+      return 'Class Start Punctuality Breakdown';
+    }
+    if (chart.id === 'internship-7') {
+      return 'Active vs Dropped Interns by Batch';
+    }
+    if (chart.id === 'internship-8') {
+      return 'Academic Attendance Distribution of Interns';
+    }
+    if (chart.id === 'internship-9') {
+      return `${interval} Intern Onboarding Timeline`;
+    }
+    if (chart.id === 'internship-10' || chart.provider === 'internship.delivery_trend') {
+      return `${interval} Scheduled vs Completed Sessions`;
+    }
+    if (chart.id === 'internship-12' || chart.provider === 'internship.completion_by_batch') {
+      return 'Class Completion Rate by Batch';
+    }
+    if (chart.id === 'internship-13' || chart.provider === 'internship.timing') {
+      return 'On-Time vs Delayed Delivery Breakdown';
+    }
+    if (chart.id === 'internship-14' || chart.provider === 'internship.subjects') {
+      return 'Internship Sessions by Subject';
+    }
+    if (chart.id === 'internship-15' || chart.provider === 'internship.mentors') {
+      return 'Internship Sessions by Mentor';
+    }
+    if (chart.id === 'internship-18') {
+      return 'Company Placement Records Status';
+    }
+    if (chart.id === 'internship-companies' || chart.provider === 'production.companies') {
+      return 'Student Placements by Company';
+    }
+    if (chart.id === 'internship-16') {
+      return 'Internship Attendance Tracking Availability';
+    }
+    if (chart.id === 'internship-17') {
+      return 'Internship Assessments & Evaluations Availability';
+    }
+    if (chart.id === 'internship-19') {
+      return 'Internship Vivas & Milestone Reviews Availability';
+    }
+  }
+  if (view === 'attendance') {
+    if (chart.id === 'attendance-overall' || chart.provider === 'attendance.overall_daily') {
+      return 'Daily Student Absence Timeline';
+    }
+    if (chart.id === 'attendance-2' || chart.render_as === 'class_absences') {
+      return 'Class-Wise Daily Absence Breakdown';
+    }
+    if (chart.id === 'attendance-1' || chart.provider === 'attendance.daily') {
+      if (breakdown === 'batch') {
+        return 'Daily Batch-Wise Attendance Trend';
+      }
+      return 'Daily Student Attendance Trend';
+    }
+    if (chart.id === 'attendance-3' || chart.provider === 'attendance.weekly') {
+      if (breakdown === 'batch') {
+        return 'Weekly Batch-Wise Attendance Trend';
+      }
+      return 'Weekly Student Attendance Trend';
+    }
+    if (chart.id === 'attendance-4' || chart.provider === 'attendance.heatmap') {
+      return 'Batch-Wise Weekly Attendance Heatmap';
+    }
+    if (chart.id === 'attendance-5' || chart.provider === 'attendance.student_matrix') {
+      return 'Student-Level Daily Attendance Matrix';
+    }
+  }
+  if (view === 'sla') {
+    if (chart.id === 'sla-1' || chart.provider === 'delivery.daily') {
+      return 'Daily Scheduled vs Completed Classes';
+    }
+    if (chart.id === 'sla-2' || chart.provider === 'delivery.daily_sla') {
+      return 'Daily On-Time Class Delivery Trend';
+    }
+    if (chart.id === 'sla-3' || chart.provider === 'delivery.heatmap') {
+      return 'Day-Wise Weekly Class Punctuality Heatmap';
+    }
+    if (chart.id === 'sla-4' || chart.provider === 'delivery.slot') {
+      return 'Class Punctuality Rate by Time Slot';
+    }
+    if (chart.id === 'sla-5' || chart.provider === 'delivery.weekday') {
+      return 'Class Punctuality Rate by Day of Week';
+    }
+    if (chart.id === 'sla-6' || chart.provider === 'delivery.batch') {
+      return 'On-Time Class Delivery Rate by Batch';
+    }
+    if (chart.id === 'sla-7' || chart.provider === 'delivery.mentor') {
+      return 'On-Time Class Delivery Rate by Faculty';
+    }
+    if (chart.id === 'sla-8' || chart.provider === 'delivery.subject_heatmap') {
+      return 'Subject-Wise Weekly Punctuality Heatmap';
+    }
+  }
+  if (view === 'mentors') {
+    if (chart.id === 'mentors-1' || chart.provider === 'delivery.weekly') {
+      return 'Weekly Faculty On-Time Delivery Trend';
+    }
+    if (chart.id === 'mentors-2' || chart.provider === 'delivery.weekly_outcomes') {
+      return 'Weekly Class Delivery: Completed vs Delayed Starts';
+    }
+    if (chart.id === 'mentors-4' || chart.provider === 'feedback.ranking') {
+      return 'Average Student Feedback Rating by Faculty';
+    }
+    if (chart.id === 'mentors-5' || chart.provider === 'feedback.all') {
+      return 'Student Rating Distribution (1 to 5 Stars)';
+    }
+  }
+  if (view === 'assess') {
+    if (chart.id === 'assess-1' || chart.provider === 'assessment.submission_trend') {
+      return 'Weekly Assignment Submission Timeline';
+    }
+    if (chart.id === 'assess-2' || chart.provider === 'assessment.submission_status') {
+      return 'Overall Assignment Submission Breakdown';
+    }
+    if (chart.id === 'assess-3' || chart.provider === 'assessment.subject_completion') {
+      return 'Assignment Completion Rate by Subject';
+    }
+    if (chart.id === 'assess-4' || chart.provider === 'assessment.progress_heatmap') {
+      return 'Assignment Completion Matrix (Semester × Batch)';
+    }
+  }
+  if (view === 'calendar') {
+    if (chart.id === 'calendar-1' || chart.provider === 'calendar.conflicts') {
+      return 'Timetable Schedule Overlap & Conflict Matrix';
+    }
+    if (chart.id === 'calendar-2') {
+      return 'Unplanned Class Disruption Timeline';
+    }
+    if (chart.id === 'calendar-3') {
+      return 'Class Disruption Impact by Batch';
+    }
+    if (chart.id === 'calendar-4') {
+      return 'Class Disruption Root Causes';
+    }
+  }
+  if (view === 'trends') {
+    const m = metric || 'feedback';
+    if (chart.id === 'trends-1' || chart.provider === 'trends.series') {
+      const metricSeriesTitles: Record<string, string> = {
+        feedback: `${interval} Mentor Feedback Rating Trend`,
+        att: `${interval} Student Attendance Trend`,
+        ontime: `${interval} On-Time Class Delivery Trend`,
+        missed: `${interval} Missed-Class Rate Trend`,
+        assess: `${interval} Assignment Completion Trend`,
+        score: `${interval} Average Assessment Score Trend`,
+        slaIssue: `${interval} Support Ticket SLA Compliance Trend`,
+        taskOn: `${interval} Task On-Time Completion Trend`,
+      };
+      return metricSeriesTitles[m] || `${interval} Metric Performance Trend`;
+    }
+    if (chart.id === 'trends-2' || chart.provider === 'trends.batch') {
+      const metricBatchTitles: Record<string, string> = {
+        feedback: 'Mentor Feedback Rating by Batch',
+        att: 'Student Attendance Rate by Batch',
+        ontime: 'On-Time Class Delivery Rate by Batch',
+        missed: 'Missed-Class Rate by Batch',
+        assess: 'Assignment Completion Rate by Batch',
+        score: 'Average Assessment Score by Batch',
+        slaIssue: 'Support SLA Compliance by Batch',
+        taskOn: 'Task On-Time Completion by Batch',
+      };
+      return metricBatchTitles[m] || 'Ranking by Batch';
+    }
+    if (chart.id === 'trends-3' || chart.provider === 'trends.mentor') {
+      const metricMentorTitles: Record<string, string> = {
+        feedback: 'Mentor Feedback Rating by Faculty',
+        att: 'Student Attendance Rate by Mentor',
+        ontime: 'On-Time Delivery Rate by Mentor',
+        missed: 'Missed Class Sessions by Mentor',
+        assess: 'Assignment Completion Rate by Mentor',
+        score: 'Average Assessment Score by Mentor',
+        slaIssue: 'Support SLA Compliance by Owner',
+        taskOn: 'Task On-Time Completion by Assignee',
+      };
+      return metricMentorTitles[m] || 'Ranking by Mentor';
+    }
+    if (chart.id === 'trends-4' || chart.provider === 'trends.subject') {
+      const metricSubjectTitles: Record<string, string> = {
+        feedback: 'Mentor Feedback Rating by Subject',
+        att: 'Student Attendance Rate by Subject',
+        ontime: 'On-Time Delivery Rate by Subject',
+        missed: 'Missed Class Sessions by Subject',
+        assess: 'Assignment Completion Rate by Subject',
+        score: 'Average Assessment Score by Subject',
+        slaIssue: 'Support SLA Compliance by Category',
+        taskOn: 'Task On-Time Completion by Category',
+      };
+      return metricSubjectTitles[m] || 'Ranking by Subject';
+    }
+    if (chart.id === 'trends-5' || chart.provider === 'trends.heatmap') {
+      const metricHeatmapTitles: Record<string, string> = {
+        feedback: 'Mentor Feedback Rating Heatmap (Batch × Timeline)',
+        att: 'Student Attendance Heatmap (Batch × Timeline)',
+        ontime: 'On-Time Delivery Heatmap (Batch × Timeline)',
+        missed: 'Missed-Class Rate Heatmap (Batch × Timeline)',
+        assess: 'Assignment Completion Heatmap (Batch × Timeline)',
+        score: 'Assessment Score Heatmap (Batch × Timeline)',
+        slaIssue: 'Support SLA Compliance Heatmap (Batch × Timeline)',
+        taskOn: 'Task Completion Heatmap (Batch × Timeline)',
+      };
+      return metricHeatmapTitles[m] || 'Heatmap · Batch × Timeline';
+    }
+  }
+  return chart.title;
+}
+
+function ChartCard({chart,onSelect,onPage,heatmapMode,onHeatmapMode,filters,view,granularity,breakdown,metric}:{chart:Chart;onSelect:(row:Point)=>void;onPage?:(page:number)=>void;heatmapMode?:string;onHeatmapMode?:(mode:string)=>void;filters?:Filters;view?:string;granularity?:string;breakdown?:string;metric?:string}){
   const [dataOpen,setDataOpen]=useState(false);const columns=[...new Set(chart.rows.flatMap(r=>Object.keys(r)))];
   const isClassAbsence=chart.id==='attendance-2'||chart.render_as==='class_absences';
   const isDailyAttendance=chart.id==='attendance-1';
@@ -426,7 +691,8 @@ function ChartCard({chart,onSelect,onPage,heatmapMode,onHeatmapMode,filters}:{ch
     isWide?'wide-chart':'',
     isClassAbsence?'class-absence-card':''
   ].filter(Boolean).join(' ');
-  return <Card title={chart.title} subtitle={chart.status==='unavailable'?'Source data required':chart.status==='empty'?'Connected · no matching records':'Database-derived · selected filters'} className={cardClasses} action={<div className="chart-card-actions">{onHeatmapMode&&<label className="heatmap-mode"><span>View</span><select aria-label="Attendance heatmap view" value={heatmapMode} onChange={e=>onHeatmapMode(e.target.value)}><option value="percentage">Percentage</option><option value="absolute">Absolute by session</option><option value="unique">Unique attenders</option></select></label>}<span className={`chart-source ${chart.status}`} title={chart.provider||chart.note}>{chart.status==='unavailable'?<Info size={13}/>:<Database size={13}/>}</span></div>}>
+  const cardTitle = dynamicTitle(chart, view, granularity, breakdown, metric);
+  return <Card title={cardTitle} subtitle={chart.status==='unavailable'?'Source data required':chart.status==='empty'?'Connected · no matching records':'Database-derived · selected filters'} className={cardClasses} action={<div className="chart-card-actions">{onHeatmapMode&&<label className="heatmap-mode"><span>View</span><select aria-label="Attendance heatmap view" value={heatmapMode} onChange={e=>onHeatmapMode(e.target.value)}><option value="percentage">Percentage</option><option value="absolute">Absolute by session</option><option value="unique">Unique attenders</option></select></label>}<span className={`chart-source ${chart.status}`} title={chart.provider||chart.note}>{chart.status==='unavailable'?<Info size={13}/>:<Database size={13}/>}</span></div>}>
     {chart.summary && (
       <div className="compact-metrics" style={{margin:'0 0 16px 0'}}>
         <div><span>Average daily absent students</span><strong>{chart.summary.avg_absent?.toLocaleString('en-IN') ?? '—'}</strong></div>
@@ -470,5 +736,5 @@ export function ChartPanels({view,tab,filters,metric='feedback',granularity='wee
     }
     return 0;
   });
-  return <>{controls}<div className={`original-charts ${result.isFetching && !result.isPending ? 'is-fetching' : ''}`}>{orderedCharts.map(c=><ChartCard key={c.id} chart={c} onSelect={point=>onSelect?.(c,point)} onPage={c.id==='attendance-5'?setMatrixPage:undefined} heatmapMode={c.id==='trends-5'&&metric==='att'?attendanceHeatmapMode:undefined} onHeatmapMode={c.id==='trends-5'&&metric==='att'?setAttendanceHeatmapMode:undefined} filters={chartFilters}/>)}</div></>;
+  return <>{controls}<div className={`original-charts ${result.isFetching && !result.isPending ? 'is-fetching' : ''}`}>{orderedCharts.map(c=><ChartCard key={c.id} chart={c} onSelect={point=>onSelect?.(c,point)} onPage={c.id==='attendance-5'?setMatrixPage:undefined} heatmapMode={c.id==='trends-5'&&metric==='att'?attendanceHeatmapMode:undefined} onHeatmapMode={c.id==='trends-5'&&metric==='att'?setAttendanceHeatmapMode:undefined} filters={chartFilters} view={view} granularity={granularity} breakdown={breakdown} metric={metric}/>)}</div></>;
 }

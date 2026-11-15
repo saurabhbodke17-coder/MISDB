@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useIsFetching, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, Check, ChevronDown, ChevronLeft, CircleHelp, Database, Filter, FilterX, LoaderCircle, LogOut, Menu, Plus, RefreshCw, Search, Settings2, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { Bell, Check, ChevronDown, ChevronLeft, CircleHelp, Database, Filter, FilterX, LoaderCircle, LogOut, Menu, Plus, RefreshCw, Search, Settings2, ShieldCheck, Sparkles, TriangleAlert, X } from 'lucide-react';
 import { api, display, initialFilters, istRange, queryString } from './api';
 import type { Dashboard, Filters, Options, Row, User } from './api';
 import { Badge, Card, Empty, ErrorState, KpiCard, Loading } from './components';
@@ -13,6 +13,7 @@ import { modules } from './modules';
 import type { Module } from './modules';
 import polarisLogo from '../../Polaris.png';
 import { AIAssistant } from './AIAssistant';
+import { StudentsAtRiskView } from './StudentsAtRiskView';
 
 declare global {
   interface Window {
@@ -175,26 +176,33 @@ function Login({ onLogin }: { onLogin: () => void }) {
   </main>;
 }
 
-function DashboardView({ data, filters, onGo, onBatch, onDate }: { data: Dashboard; filters: Filters; onGo: (id: string) => void; onBatch: (id: string) => void; onDate: (date: string) => void }) {
+function DashboardView({ data, filters, onGo, onBatch: _onBatch, onDate }: { data: Dashboard; filters: Filters; onGo: (id: string) => void; onBatch: (id: string) => void; onDate: (date: string) => void }) {
   const notifications = useQuery({ queryKey: ['notifications'], queryFn: () => api<Row[]>('/notifications') });
-  const [granularity, setGranularity] = useState('weekly'); const [breakdown, setBreakdown] = useState('institution');
+  const isSingleDay = Boolean(filters.from_date && filters.to_date && filters.from_date === filters.to_date);
+  const [userGranularity, setUserGranularity] = useState<string | null>(null);
+  const granularity = userGranularity ?? (isSingleDay ? 'daily' : 'weekly');
+  const [breakdown, setBreakdown] = useState('institution');
   return <>
     <div className="kpi-grid">{data.kpis.map(k => <KpiCard key={k.key} kpi={k} onClick={() => onGo(k.module)} />)}</div>
-    <div className="chart-controls"><span>Attendance interval</span><select aria-label="Overview attendance interval" value={granularity} onChange={e => setGranularity(e.target.value)}><option value="daily">Daily</option><option value="weekly">Weekly</option></select><select aria-label="Attendance series" value={breakdown} onChange={e => setBreakdown(e.target.value)}><option value="institution">Institution-wide</option><option value="batch">By batch</option></select></div>
+    <div className="chart-controls"><span>Attendance interval</span><select aria-label="Overview attendance interval" value={granularity} onChange={e => setUserGranularity(e.target.value)}><option value="daily">Daily</option><option value="weekly">Weekly</option></select><select aria-label="Attendance series" value={breakdown} onChange={e => setBreakdown(e.target.value)}><option value="institution">Institution-wide</option><option value="batch">By batch</option></select></div>
     <ChartPanels view="command" tab="overview" filters={filters} granularity={granularity} breakdown={breakdown} onSelect={(chart, point) => { if (typeof point.name === 'string' && /^\d{4}-\d{2}-\d{2}/.test(point.name)) onDate(point.name.slice(0, 10)); else onGo(chart.source === 'support' ? 'tickets' : 'trends'); }} />
-    <div className="grid-main"><Card title="Batch-wise institutional health" subtitle="Recorded attendance across the selected cohorts" action={<button className="text-link" onClick={() => onGo('attendance')}>View attendance →</button>}>
-      {data.batches.length ? <div className="table-scroll"><table><thead><tr><th>Batch / cohort</th><th>Students recorded</th><th>Classes</th><th>Attendance</th><th>Signal</th></tr></thead><tbody>{data.batches.map(b => <tr key={b.id}><td><button className="text-link" onClick={() => onBatch(b.id)}>{b.name}</button></td><td className="numeric">{b.students}</td><td className="numeric">{b.sessions}</td><td><div className="health-value"><span className="numeric">{b.attendance == null ? '—' : `${b.attendance}%`}</span><span className="progress"><i style={{ width: `${b.attendance ?? 0}%`, background: (b.attendance ?? 0) >= 85 ? 'var(--green)' : 'var(--amber)' }} /></span></div></td><td><Badge value={b.attendance == null ? 'No evidence' : b.attendance >= 85 ? 'On target' : 'Follow-up'} /></td></tr>)}</tbody></table></div> : <Empty />}
-    </Card><Card title="Upcoming milestones · next 7 days" subtitle="Open work due within seven days" action={<button className="icon-button" onClick={() => onGo('actions')} aria-label="Open action center"><ChevronDown size={16} /></button>}>
-        {notifications.data?.length ? <div className="priority-list">{notifications.data.slice(0, 5).map(n => <button key={n.id} onClick={() => onGo('actions')}><span className="priority-date">{display(n.due_date)}</span><strong>{String(n.title)}</strong><Badge value={n.severity} /></button>)}</div> : <Empty title="Upcoming action data unavailable" message="Production has no mapped institutional action register with owners and deadlines." />}
-      </Card></div>
+    <Card title="Upcoming Operational Milestones · Next 7 Days" subtitle="Action items and deliverables due within seven days" action={<button className="icon-button" onClick={() => onGo('actions')} aria-label="Open action center"><ChevronDown size={16} /></button>}>
+      {notifications.data?.length ? <div className="priority-list">{notifications.data.slice(0, 5).map(n => <button key={n.id} onClick={() => onGo('actions')}><span className="priority-date">{display(n.due_date)}</span><strong>{String(n.title)}</strong><Badge value={n.severity} /></button>)}</div> : <Empty title="Upcoming action data unavailable" message="Production has no mapped institutional action register with owners and deadlines." />}
+    </Card>
   </>;
 }
 
 function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const client = useQueryClient();
   const isFetchingCount = useIsFetching();
-  const [view, setView] = useState(() => modules.some(m => m.id === location.hash.slice(1)) ? location.hash.slice(1) : 'command');
-  const [tab, setTab] = useState(0);
+  const [view, setView] = useState(() => {
+    if (location.hash === '#students-at-risk' || location.hash === '#risk') return 'attendance';
+    return modules.some(m => m.id === location.hash.slice(1)) ? location.hash.slice(1) : 'command';
+  });
+  const [tab, setTab] = useState(() => {
+    if (location.hash === '#students-at-risk' || location.hash === '#risk') return 0;
+    return 0;
+  });
 
   // Draft filters: what is currently chosen in the filter dropdowns/inputs
   const [draftFilters, setDraftFilters] = useState<Filters>(initialFilters);
@@ -244,6 +252,11 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   useEffect(() => {
     const handler = () => {
       const next = location.hash.slice(1);
+      if (next === 'students-at-risk' || next === 'risk') {
+        setView('attendance');
+        setTab(0);
+        return;
+      }
       if (modules.some(m => m.id === next)) {
         setView(next);
         setTab(0);
@@ -302,6 +315,13 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   }, [appliedRange, draftRange]);
 
   function go(id: string) {
+    if (id === 'students-at-risk' || id === 'risk') {
+      setView('attendance');
+      setTab(0);
+      setMobile(false);
+      location.hash = 'students-at-risk';
+      return;
+    }
     const next = presetDates(appliedRange);
     if (id === 'internship') {
       const resetInternship = {
@@ -447,7 +467,23 @@ function Workspace({ user, onLogout }: { user: User; onLogout: () => void }) {
       {mobile && <button className="mobile-scrim" onClick={() => setMobile(false)} aria-label="Close navigation" />}
       <aside className="sidebar">
         <div className="brand"><span className="brand-mark"><img src={polarisLogo} alt="Polaris School of Technology" /></span></div>
-        <nav aria-label="Main navigation">{groups.map(g => <div key={g}><div className="nav-group">{g}</div>{modules.filter(m => m.group === g).map(m => <button key={m.id} className={view === m.id ? 'active' : ''} onClick={() => go(m.id)} title={m.name} aria-current={view === m.id ? 'page' : undefined}><m.icon size={17} /><span>{m.name}</span>{m.id === 'actions' && !!notifications.data?.length && <b className="nav-count">{notifications.data.length}</b>}</button>)}</div>)}</nav>
+        <nav aria-label="Main navigation">{groups.map(g => <div key={g}><div className="nav-group">{g}</div>{modules.filter(m => m.group === g).map(m => (
+          <div key={m.id}>
+            <button className={view === m.id && (m.id !== 'attendance' || (location.hash !== '#students-at-risk' && tab !== 0)) ? 'active' : ''} onClick={() => go(m.id)} title={m.name} aria-current={view === m.id ? 'page' : undefined}><m.icon size={17} /><span>{m.name}</span>{m.id === 'actions' && !!notifications.data?.length && <b className="nav-count">{notifications.data.length}</b>}</button>
+            {m.id === 'attendance' && (
+              <button
+                type="button"
+                key="nav-students-at-risk"
+                className={`sidebar-sub-item ${view === 'attendance' && tab === 0 ? 'active' : ''}`}
+                onClick={() => go('students-at-risk')}
+                title="Students at Risk (Based on Attendance)"
+              >
+                <TriangleAlert size={14} />
+                <span>Students at Risk</span>
+              </button>
+            )}
+          </div>
+        ))}</div>)}</nav>
         <button className="collapse-toggle" onClick={() => setCollapsed(c => !c)}><ChevronLeft size={17} /><span>Collapse navigation</span></button>
         <div className="sidebar-footer"><span className="green-dot" /><span>Connected to PostgreSQL</span></div>
       </aside>
@@ -632,21 +668,38 @@ function ModuleView({module,selectedTab,setTab,filters,dashboard,openRecord,setT
     if (point.date) { setSelection(String(point.date)); return; }
     setToast('Use “View chart data” for the exact plotted values; the register below contains the scoped source records.');
   }
-  const isAcademic = ['trends', 'attendance', 'sla', 'academic', 'mentors', 'assess'].includes(module.id);
-  const hideAcademicKpis = module.id === 'attendance' && tab?.id === 'overall';
+  const isAcademic = ['trends', 'attendance', 'sla', 'mentors', 'assess'].includes(module.id);
+  const hideAcademicKpis = module.id === 'attendance' && (tab?.id === 'overall' || tab?.id === 'risk');
+
+  if (module.id === 'academic') {
+    return (
+      <Card title="Student Academic Performance">
+        <Empty
+          title="No academic performance data available"
+          message="We do not currently store academic performance data in the database. No placeholder data, charts, or plots are displayed."
+        />
+      </Card>
+    );
+  }
+
   return <>
     {isAcademic && !hideAcademicKpis && dashboard && <div className="compact-metrics">{dashboard.kpis.filter(k=>['attendance','delivery','completion','score'].includes(k.key)).map(k=><div key={k.key}><span>{k.label}</span><strong>{k.value==null?'—':`${k.value}%`}</strong></div>)}</div>}
-    {module.id==='internship'&&internshipSummary.data&&<div className="compact-metrics"><div><span>Active students</span><strong>{internshipSummary.data.active_students}</strong></div><div><span>Dropped students</span><strong>{internshipSummary.data.dropped_students}</strong></div><div><span>Internship batches</span><strong>{internshipSummary.data.batches}</strong></div><div><span>Sessions in period</span><strong>{internshipSummary.data.sessions}</strong></div><div><span>Session completion</span><strong>{internshipSummary.data.completion_rate==null?'—':`${internshipSummary.data.completion_rate}%`}</strong></div><div><span>On-time starts</span><strong>{internshipSummary.data.on_time_rate==null?'—':`${internshipSummary.data.on_time_rate}%`}</strong></div></div>}
+    {module.id==='internship'&&internshipSummary.data&&<div className="compact-metrics"><div><span>Active Interns</span><strong>{internshipSummary.data.active_students}</strong></div><div><span>Dropped Interns</span><strong>{internshipSummary.data.dropped_students}</strong></div><div><span>Active Batches</span><strong>{internshipSummary.data.batches}</strong></div><div><span>Scheduled Classes</span><strong>{internshipSummary.data.sessions}</strong></div><div><span>Class Completion Rate</span><strong>{internshipSummary.data.completion_rate==null?'—':`${internshipSummary.data.completion_rate}%`}</strong></div><div><span>On-Time Start Rate</span><strong>{internshipSummary.data.on_time_rate==null?'—':`${internshipSummary.data.on_time_rate}%`}</strong></div></div>}
     {module.id==='internship'&&internshipSummary.error&&<ErrorState error={internshipSummary.error} retry={()=>void internshipSummary.refetch()}/>}
     <div className="tabs" role="tablist" aria-label={`${module.name} views`}>{module.tabs.map((t,i)=><button key={t.label} role="tab" aria-selected={i===selectedTab} className={i===selectedTab?'active':''} onClick={()=>setTab(i)}>{t.label}</button>)}</div>
     {module.id==='trends'&&<div className="chart-controls"><label>Metric <select value={metric} onChange={e=>setMetric(e.target.value)}>{Object.entries({feedback:'Mentor feedback rating',att:'Attendance',ontime:'On-time class delivery',missed:'Missed-class rate',assess:'Assessment completion',score:'Average score',slaIssue:'Issue SLA compliance',taskOn:'On-time task completion'}).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Interval <select value={granularity} onChange={e=>setGranularity(e.target.value)}>{['daily','weekly','monthly','semester'].map(g=><option key={g}>{g}</option>)}</select></label></div>}
     {module.id==='calendar'&&tab?.id==='calendar'&&<CalendarBoard filters={filters} onOpen={openRecord}/>}
     {module.id==='attendance'&&['daily','weekly'].includes(tab?.id||'')&&<div className="chart-controls"><label>Attendance series <select value={breakdown} onChange={e=>setBreakdown(e.target.value)}><option value="institution">Institution-wide</option><option value="batch">By batch</option></select></label></div>}
-    {module.id==='academic'&&tab?.id==='risk'&&<p className="source-note">Risk view: active students with recorded attendance below 40% in the selected period. Attendance at or above 40% is No Risk; missing attendance is No attendance evidence.</p>}
-    <ChartPanels view={module.id} tab={tab?.id||'overview'} filters={filters} metric={metric} granularity={granularity} breakdown={breakdown} onSelect={selectChart}/>
-    {tab?.id==='rules'&&<Card title="Exception & risk rules"><div className="rules-panel"><h3>Evidence-based checks</h3><p>Completed classes without actual start timestamps and unmatched examination results are flagged from the source records.</p><p>Student risk currently uses one rule: recorded attendance below 40% is High Risk. Attendance at or above 40% is No Risk. Missing attendance remains unclassified as No attendance evidence and does not create an assumed risk.</p></div></Card>}
-    {selection&&<div className="selection-chip">Chart selection: {selection}<button onClick={()=>setSelection('')}>Clear ×</button></div>}
-    {source?<Register key={`${module.id}-${tab?.id}-${source}`} source={source} filters={filters} onOpen={openRecord} onError={setToast} showCharts={false} externalSearch={selection} preset={`${module.id}:${tab?.id}`}/>:tab?.missing&&<Card title={tab.label}><Empty title="Additional source data required" message={tab.missing}/></Card>}
+    {module.id==='attendance'&&tab?.id==='risk' ? (
+      <StudentsAtRiskView filters={filters} onOpen={openRecord} setToast={setToast} />
+    ) : (
+      <>
+        <ChartPanels view={module.id} tab={tab?.id||'overview'} filters={filters} metric={metric} granularity={granularity} breakdown={breakdown} onSelect={selectChart}/>
+        {tab?.id==='rules'&&<Card title="Exception & risk rules"><div className="rules-panel"><h3>Evidence-based checks</h3><p>Completed classes without actual start timestamps and unmatched examination results are flagged from the source records.</p><p>Student risk currently uses one rule: recorded attendance below 40% is High Risk. Attendance at or above 40% is No Risk. Missing attendance remains unclassified as No attendance evidence and does not create an assumed risk.</p></div></Card>}
+        {selection&&<div className="selection-chip">Chart selection: {selection}<button onClick={()=>setSelection('')}>Clear ×</button></div>}
+        {source?<Register key={`${module.id}-${tab?.id}-${source}`} source={source} filters={filters} onOpen={openRecord} onError={setToast} showCharts={false} externalSearch={selection} preset={`${module.id}:${tab?.id}`}/>:tab?.missing&&<Card title={tab.label}><Empty title="Additional source data required" message={tab.missing}/></Card>}
+      </>
+    )}
   </>;
 }
 

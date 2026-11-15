@@ -34,7 +34,7 @@
         {
           "id": "internship-1",
           "tab": "overview",
-          "title": "Internship enrollment status",
+          "title": "Intern Enrollment Status: Active vs Dropped",
           "type": "stacked",
           "provider": "internship.enrollment_status",
           "reason": null,
@@ -43,7 +43,7 @@
         {
           "id": "internship-2",
           "tab": "overview",
-          "title": "Students by internship batch",
+          "title": "Intern Headcount by Batch",
           "type": "bar",
           "provider": "internship.batch_strength",
           "reason": null,
@@ -52,7 +52,7 @@
         {
           "id": "internship-3",
           "tab": "overview",
-          "title": "Internship enrollment timeline",
+          "title": "Weekly Intern Onboarding Trend",
           "type": "line",
           "provider": "internship.joined",
           "reason": null,
@@ -61,7 +61,7 @@
         {
           "id": "internship-4",
           "tab": "overview",
-          "title": "Academic attendance context",
+          "title": "Academic Attendance Bands of Interns",
           "type": "hbar",
           "provider": "internship.attendance_band",
           "reason": null,
@@ -70,7 +70,7 @@
         {
           "id": "internship-5",
           "tab": "overview",
-          "title": "Internship session status",
+          "title": "Session Delivery Status Breakdown",
           "type": "stacked",
           "provider": "internship.delivery_status",
           "reason": null,
@@ -79,7 +79,7 @@
         {
           "id": "internship-6",
           "tab": "overview",
-          "title": "Session start evidence",
+          "title": "Class Start Punctuality Breakdown",
           "type": "stacked",
           "provider": "internship.timing",
           "reason": null,
@@ -88,7 +88,7 @@
         {
           "id": "internship-7",
           "tab": "students",
-          "title": "Active and dropped students by batch",
+          "title": "Active vs Dropped Interns by Batch",
           "type": "bar",
           "provider": "internship.batch_strength",
           "reason": null,
@@ -97,7 +97,7 @@
         {
           "id": "internship-8",
           "tab": "students",
-          "title": "Academic attendance of internship students",
+          "title": "Academic Attendance Distribution of Interns",
           "type": "hbar",
           "provider": "internship.attendance_band",
           "reason": null,
@@ -106,7 +106,7 @@
         {
           "id": "internship-9",
           "tab": "students",
-          "title": "Students added over time",
+          "title": "Weekly Intern Onboarding Timeline",
           "type": "line",
           "provider": "internship.joined",
           "reason": null,
@@ -115,7 +115,7 @@
         {
           "id": "internship-10",
           "tab": "delivery",
-          "title": "Scheduled vs completed sessions",
+          "title": "Weekly Scheduled vs Completed Sessions",
           "type": "line",
           "provider": "internship.delivery_trend",
           "reason": null,
@@ -124,7 +124,7 @@
         {
           "id": "internship-11",
           "tab": "delivery",
-          "title": "Delivery status",
+          "title": "Session Delivery Status Breakdown",
           "type": "stacked",
           "provider": "internship.delivery_status",
           "reason": null,
@@ -133,7 +133,7 @@
         {
           "id": "internship-12",
           "tab": "delivery",
-          "title": "Completion by internship batch",
+          "title": "Class Completion Rate by Batch",
           "type": "hbar",
           "provider": "internship.completion_by_batch",
           "reason": null,
@@ -142,7 +142,7 @@
         {
           "id": "internship-13",
           "tab": "delivery",
-          "title": "On-time and delayed class delivery",
+          "title": "On-Time vs Delayed Delivery Breakdown",
           "type": "stacked",
           "provider": "internship.timing",
           "reason": null,
@@ -151,7 +151,7 @@
         {
           "id": "internship-14",
           "tab": "delivery",
-          "title": "Top subjects by sessions",
+          "title": "Internship Sessions by Subject",
           "type": "hbar",
           "provider": "internship.subjects",
           "reason": null,
@@ -160,7 +160,7 @@
         {
           "id": "internship-15",
           "tab": "delivery",
-          "title": "Top mentors by sessions",
+          "title": "Internship Sessions by Mentor",
           "type": "hbar",
           "provider": "internship.mentors",
           "reason": null,
@@ -169,7 +169,7 @@
         {
           "id": "internship-16",
           "tab": "coverage",
-          "title": "Internship attendance",
+          "title": "Internship Attendance Tracking Availability",
           "type": "bar",
           "provider": null,
           "reason": "The connected production source contains no attendance records against internship-batch sessions. Academic attendance is shown only as contextual evidence for the same students.",
@@ -178,7 +178,7 @@
         {
           "id": "internship-17",
           "tab": "coverage",
-          "title": "Internship assignments and evaluations",
+          "title": "Internship Assessments & Evaluations Availability",
           "type": "bar",
           "provider": null,
           "reason": "No assignments, submissions or graded evaluations are linked to internship batches in the connected production source.",
@@ -187,7 +187,7 @@
         {
           "id": "internship-18",
           "tab": "coverage",
-          "title": "Internship placements by company",
+          "title": "Company Placement Records Status",
           "type": "bar",
           "provider": "production.companies",
           "reason": null,
@@ -196,16 +196,16 @@
         {
           "id": "internship-19",
           "tab": "coverage",
-          "title": "Reviews, vivas and milestones",
+          "title": "Internship Vivas & Milestone Reviews Availability",
           "type": "bar",
           "provider": null,
-          "reason": "Internship-specific reviews are not linked to these placements. Production OJT evaluations are available separately under OJT & Industry Projects → Reviews & vivas.",
+          "reason": "Internship-specific reviews are not linked to these placements. Production OJT evaluations are available separately under OJT & Industry Projects \u2192 Reviews & vivas.",
           "source": null
         },
         {
           "id": "internship-companies",
           "tab": "placements",
-          "title": "Internship placements by company",
+          "title": "Student Placements by Company",
           "type": "hbar",
           "provider": "production.companies",
           "source": "internship_placements",
@@ -265,6 +265,11 @@
     "attendance": {
       "tabs": [
         {
+          "id": "risk",
+          "label": "Students at Risk (Based on Attendance)",
+          "source": "students"
+        },
+        {
           "id": "overall",
           "label": "Overall attendance",
           "source": "attendance"
@@ -294,7 +299,7 @@
         {
           "id": "attendance-overall",
           "tab": "overall",
-          "title": "Overall daily student absence",
+          "title": "Daily Student Absence Timeline",
           "type": "bar",
           "provider": "attendance.overall_daily",
           "reason": null,
@@ -303,7 +308,7 @@
         {
           "id": "attendance-2",
           "tab": "daily",
-          "title": "Daily absence count",
+          "title": "Class-Wise Daily Absence Breakdown",
           "type": "bar",
           "provider": "attendance.absences",
           "reason": null,
@@ -312,7 +317,7 @@
         {
           "id": "attendance-1",
           "tab": "daily",
-          "title": "Daily attendance",
+          "title": "Daily Student Attendance Trend",
           "type": "line",
           "provider": "attendance.daily",
           "reason": null,
@@ -321,7 +326,7 @@
         {
           "id": "attendance-3",
           "tab": "weekly",
-          "title": "Weekly attendance",
+          "title": "Weekly Student Attendance Trend",
           "type": "line",
           "provider": "attendance.weekly",
           "reason": null,
@@ -330,7 +335,7 @@
         {
           "id": "attendance-4",
           "tab": "weekly",
-          "title": "Weekly heatmap · batch × week",
+          "title": "Batch-Wise Weekly Attendance Heatmap",
           "type": "heatmap",
           "provider": "attendance.heatmap",
           "reason": null,
@@ -339,7 +344,7 @@
         {
           "id": "attendance-5",
           "tab": "matrix",
-          "title": "Student attendance matrix",
+          "title": "Student-Level Daily Attendance Matrix",
           "type": "heatmap",
           "provider": "attendance.student_matrix",
           "reason": null,
@@ -384,7 +389,7 @@
         {
           "id": "sla-1",
           "tab": "daily",
-          "title": "Scheduled vs delivered, by day",
+          "title": "Daily Scheduled vs Completed Classes",
           "type": "bar",
           "provider": "delivery.daily",
           "reason": null,
@@ -393,7 +398,7 @@
         {
           "id": "sla-2",
           "tab": "daily",
-          "title": "Daily SLA compliance",
+          "title": "Daily On-Time Class Delivery Trend",
           "type": "line",
           "provider": "delivery.daily_sla",
           "reason": null,
@@ -402,7 +407,7 @@
         {
           "id": "sla-3",
           "tab": "timetable",
-          "title": "Weekly timetable adherence",
+          "title": "Day-Wise Weekly Class Punctuality Heatmap",
           "type": "heatmap",
           "provider": "delivery.heatmap",
           "reason": null,
@@ -411,7 +416,7 @@
         {
           "id": "sla-4",
           "tab": "timetable",
-          "title": "SLA by time slot",
+          "title": "Class Punctuality Rate by Time Slot",
           "type": "hbar",
           "provider": "delivery.slot",
           "reason": null,
@@ -420,7 +425,7 @@
         {
           "id": "sla-5",
           "tab": "timetable",
-          "title": "SLA by weekday",
+          "title": "Class Punctuality Rate by Day of Week",
           "type": "hbar",
           "provider": "delivery.weekday",
           "reason": null,
@@ -429,7 +434,7 @@
         {
           "id": "sla-6",
           "tab": "batch",
-          "title": "Batch-wise SLA ranking",
+          "title": "On-Time Class Delivery Rate by Batch",
           "type": "hbar",
           "provider": "delivery.batch",
           "reason": null,
@@ -438,7 +443,7 @@
         {
           "id": "sla-7",
           "tab": "mentor",
-          "title": "Mentor-wise SLA ranking",
+          "title": "On-Time Class Delivery Rate by Faculty",
           "type": "hbar",
           "provider": "delivery.mentor",
           "reason": null,
@@ -447,7 +452,7 @@
         {
           "id": "sla-8",
           "tab": "subject",
-          "title": "Subject × week SLA",
+          "title": "Subject-Wise Weekly Punctuality Heatmap",
           "type": "heatmap",
           "provider": "delivery.subject_heatmap",
           "reason": null,
@@ -459,90 +464,11 @@
       "tabs": [
         {
           "id": "overview",
-          "label": "Overview",
-          "source": "students"
-        },
-        {
-          "id": "subjects",
-          "label": "Subjects & batches",
-          "source": "results"
-        },
-        {
-          "id": "risk",
-          "label": "Students requiring intervention",
-          "source": "students"
-        },
-        {
-          "id": "backlog",
-          "label": "Assessment backlog",
-          "source": "assignments"
+          "label": "Academic performance",
+          "missing": "We do not currently store academic performance data in the database. No placeholder data, charts, or plots are displayed."
         }
       ],
-      "charts": [
-        {
-          "id": "academic-1",
-          "tab": "overview",
-          "title": "Score distribution",
-          "type": "bar",
-          "provider": "assessment.histogram",
-          "reason": null,
-          "source": "results"
-        },
-        {
-          "id": "academic-2",
-          "tab": "overview",
-          "title": "Semester performance trend",
-          "type": "line",
-          "provider": "assessment.semester",
-          "reason": null,
-          "source": "results"
-        },
-        {
-          "id": "academic-3",
-          "tab": "overview",
-          "title": "Attendance vs performance",
-          "type": "scatter",
-          "provider": "assessment.scatter",
-          "reason": null,
-          "source": "students"
-        },
-        {
-          "id": "academic-4",
-          "tab": "overview",
-          "title": "Batch comparison · average score",
-          "type": "hbar",
-          "provider": "assessment.batch_score",
-          "reason": null,
-          "source": "results"
-        },
-        {
-          "id": "academic-5",
-          "tab": "overview",
-          "title": "Batch comparison · pass rate",
-          "type": "hbar",
-          "provider": "assessment.batch_pass",
-          "reason": null,
-          "source": "results"
-        },
-        {
-          "id": "academic-6",
-          "tab": "subjects",
-          "title": "Subject-wise performance heatmap",
-          "type": "heatmap",
-          "provider": "assessment.subject_heatmap",
-          "reason": null,
-          "source": "results"
-        },
-        {
-          "id": "academic-7",
-          "tab": "risk",
-          "title": "Student attendance trends",
-          "type": "spark",
-          "provider": "attendance.student_trends",
-          "reason": null,
-          "source": "students"
-        }
-      ]
+      "charts": []
     },
     "mentors": {
       "tabs": [
@@ -557,26 +483,16 @@
           "source": "sessions"
         },
         {
-          "id": "workload",
-          "label": "Workload",
-          "source": "sessions"
-        },
-        {
           "id": "feedback",
           "label": "Feedback",
           "source": "mentor_feedback"
-        },
-        {
-          "id": "exceptions",
-          "label": "Exception log",
-          "source": "data_quality"
         }
       ],
       "charts": [
         {
           "id": "mentors-1",
           "tab": "trend",
-          "title": "Weekly on-time delivery",
+          "title": "Weekly Faculty On-Time Delivery Trend",
           "type": "line",
           "provider": "delivery.weekly",
           "reason": null,
@@ -585,25 +501,16 @@
         {
           "id": "mentors-2",
           "tab": "trend",
-          "title": "Weekly classes: delivered vs breaches",
+          "title": "Weekly Class Delivery: Completed vs Delayed Starts",
           "type": "bar",
           "provider": "delivery.weekly_outcomes",
           "reason": null,
           "source": "sessions"
         },
         {
-          "id": "mentors-3",
-          "tab": "workload",
-          "title": "Workload by mentor and batch",
-          "type": "bar",
-          "provider": "delivery.workload",
-          "reason": null,
-          "source": "sessions"
-        },
-        {
           "id": "mentors-4",
           "tab": "feedback",
-          "title": "Ranking by mentor · average feedback rating",
+          "title": "Average Student Feedback Rating by Faculty",
           "type": "hbar",
           "provider": "feedback.ranking",
           "reason": null,
@@ -613,7 +520,7 @@
         {
           "id": "mentors-5",
           "tab": "feedback",
-          "title": "Feedback distribution · all mentors in view",
+          "title": "Student Rating Distribution (1 to 5 Stars)",
           "type": "bar",
           "provider": "feedback.all",
           "reason": null,
@@ -914,7 +821,7 @@
         {
           "id": "tech-6",
           "tab": "drill",
-          "title": "System · daily availability",
+          "title": "System \u00b7 daily availability",
           "type": "line",
           "provider": null,
           "reason": "No per-system daily uptime telemetry.",
@@ -1132,7 +1039,7 @@
         {
           "id": "calendar-1",
           "tab": "conflicts",
-          "title": "Scheduling conflict matrix",
+          "title": "Timetable Schedule Overlap & Conflict Matrix",
           "type": "heatmap",
           "provider": "calendar.conflicts",
           "reason": null,
@@ -1141,7 +1048,7 @@
         {
           "id": "calendar-2",
           "tab": "disruptions",
-          "title": "Disruption trend",
+          "title": "Unplanned Class Disruption Timeline",
           "type": "bar",
           "provider": null,
           "reason": "No disruption/cancellation reason records or approved-versus-unplanned cancellation flags. Past scheduled sessions are not automatically classified as missed.",
@@ -1150,7 +1057,7 @@
         {
           "id": "calendar-3",
           "tab": "disruptions",
-          "title": "Impact by batch",
+          "title": "Class Disruption Impact by Batch",
           "type": "hbar",
           "provider": null,
           "reason": "No disruption/cancellation reason records or approved-versus-unplanned cancellation flags. Past scheduled sessions are not automatically classified as missed.",
@@ -1159,7 +1066,7 @@
         {
           "id": "calendar-4",
           "tab": "disruptions",
-          "title": "Reasons",
+          "title": "Class Disruption Root Causes",
           "type": "hbar",
           "provider": null,
           "reason": "No disruption/cancellation reason records or approved-versus-unplanned cancellation flags. Past scheduled sessions are not automatically classified as missed.",
@@ -1171,72 +1078,53 @@
       "tabs": [
         {
           "id": "lifecycle",
-          "label": "Lifecycle",
+          "label": "Assignment submissions",
           "source": "assignments"
-        },
-        {
-          "id": "readiness",
-          "label": "Readiness checklist",
-          "source": null,
-          "missing": "This view requires source records not supplied in the LMS dump."
         },
         {
           "id": "matrix",
           "label": "Semester progress",
           "source": "assignments"
-        },
-        {
-          "id": "overdue",
-          "label": "Overdue evaluations",
-          "source": "assignments"
-        },
-        {
-          "id": "timeline",
-          "label": "Publication timeline",
-          "source": "examinations"
-        },
-        {
-          "id": "improve",
-          "label": "Improvement & corrections",
-          "source": "corrections"
         }
       ],
       "charts": [
         {
           "id": "assess-1",
           "tab": "lifecycle",
-          "title": "Assessments by lifecycle stage",
-          "type": "funnel",
-          "provider": null,
-          "reason": "Assignment approval and grading are present, but examination paper preparation, review, platform readiness, marks verification and result-publication stages are absent. The assignment register remains available.",
-          "source": null
+          "title": "Weekly Assignment Submission Timeline",
+          "type": "line",
+          "provider": "assessment.submission_trend",
+          "reason": null,
+          "source": "assignments"
         },
         {
           "id": "assess-2",
           "tab": "lifecycle",
-          "title": "Evaluation progress",
-          "type": "hbar",
-          "provider": "assessment.evaluation",
+          "title": "Overall Assignment Submission Breakdown",
+          "type": "stacked",
+          "provider": "assessment.submission_status",
           "reason": null,
           "source": "assignments"
         },
         {
           "id": "assess-3",
-          "tab": "matrix",
-          "title": "Semester-wise progress matrix",
-          "type": "heatmap",
-          "provider": "assessment.progress_heatmap",
+          "tab": "lifecycle",
+          "title": "Assignment Completion Rate by Subject",
+          "type": "hbar",
+          "unit": "%",
+          "provider": "assessment.subject_completion",
           "reason": null,
           "source": "assignments"
         },
         {
           "id": "assess-4",
-          "tab": "timeline",
-          "title": "Cumulative assessments conducted vs published",
-          "type": "line",
-          "provider": null,
-          "reason": "Examination dates exist, but actual conducted and result-publication timestamps are absent. Grading time is not publication time.",
-          "source": null
+          "tab": "matrix",
+          "title": "Assignment Completion Matrix (Semester \u00d7 Batch)",
+          "type": "heatmap",
+          "unit": "%",
+          "provider": "assessment.progress_heatmap",
+          "reason": null,
+          "source": "assignments"
         }
       ]
     },
@@ -1366,7 +1254,7 @@
         {
           "id": "ojt-6",
           "tab": "reviews",
-          "title": "OJT evaluation completion · recorded rows",
+          "title": "OJT evaluation completion \u00b7 recorded rows",
           "type": "bar",
           "provider": "production.evaluation_status",
           "reason": null,
@@ -1499,7 +1387,7 @@
         {
           "id": "command-1",
           "tab": "overview",
-          "title": "Attendance",
+          "title": "Student Attendance Trend",
           "type": "line",
           "provider": "attendance.weekly",
           "reason": null,
@@ -1508,7 +1396,7 @@
         {
           "id": "command-2",
           "tab": "overview",
-          "title": "On-time class delivery",
+          "title": "On-Time Class Delivery Trend",
           "type": "line",
           "provider": "delivery.weekly",
           "reason": null,
@@ -1517,25 +1405,16 @@
         {
           "id": "command-3",
           "tab": "overview",
-          "title": "Assessment completion",
+          "title": "Assignment Completion Trend",
           "type": "line",
           "provider": "assessment.completion",
           "reason": null,
           "source": null
         },
         {
-          "id": "command-4",
-          "tab": "overview",
-          "title": "Student academic performance",
-          "type": "line",
-          "provider": "assessment.score",
-          "reason": null,
-          "source": null
-        },
-        {
           "id": "command-5",
           "tab": "overview",
-          "title": "SLA compliance",
+          "title": "Support Ticket SLA Compliance Trend",
           "type": "line",
           "provider": "support.sla",
           "reason": null,
@@ -1544,7 +1423,7 @@
         {
           "id": "command-6",
           "tab": "overview",
-          "title": "Open vs resolved issues",
+          "title": "Student Issues: Logged vs Resolved Trend",
           "type": "line",
           "provider": "support.open_resolved",
           "reason": null,
@@ -1553,7 +1432,7 @@
         {
           "id": "command-7",
           "tab": "overview",
-          "title": "Overdue operational tasks",
+          "title": "Overdue Operational Tasks Trend",
           "type": "line",
           "provider": "tasks.overdue_trend",
           "reason": null,
@@ -1573,7 +1452,7 @@
         {
           "id": "trends-1",
           "tab": "overview",
-          "title": "Current vs previous period",
+          "title": "Weekly Mentor Feedback Rating Trend",
           "type": "line",
           "provider": "trends.series",
           "reason": null,
@@ -1582,7 +1461,7 @@
         {
           "id": "trends-2",
           "tab": "overview",
-          "title": "Ranking by batch",
+          "title": "Mentor Feedback Rating by Batch",
           "type": "hbar",
           "provider": "trends.batch",
           "reason": null,
@@ -1591,7 +1470,7 @@
         {
           "id": "trends-3",
           "tab": "overview",
-          "title": "Ranking by mentor",
+          "title": "Mentor Feedback Rating by Faculty",
           "type": "hbar",
           "plot_limit": 10,
           "provider": "trends.mentor",
@@ -1601,7 +1480,7 @@
         {
           "id": "trends-4",
           "tab": "overview",
-          "title": "By subject",
+          "title": "Mentor Feedback Rating by Subject",
           "type": "hbar",
           "plot_limit": 10,
           "provider": "trends.subject",
@@ -1611,7 +1490,7 @@
         {
           "id": "trends-5",
           "tab": "overview",
-          "title": "Heatmap · batch × week",
+          "title": "Mentor Feedback Rating Heatmap (Batch \u00d7 Timeline)",
           "type": "heatmap",
           "provider": "trends.heatmap",
           "reason": null,
