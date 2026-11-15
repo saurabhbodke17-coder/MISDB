@@ -16,7 +16,11 @@ from .plots import attendance_heatmap, student_scatter, task_timeline
 from .records import source_query
 
 router = APIRouter(prefix="/charts", tags=["Original chart integration"])
-MANIFEST = json.loads(Path(__file__).with_name("chart_manifest.json").read_text())
+def get_manifest():
+    return json.loads(Path(__file__).with_name("chart_manifest.json").read_text())
+
+
+MANIFEST = get_manifest()
 
 
 def unavailable(reason):
@@ -66,6 +70,7 @@ def assessment_facts(f):
     WHERE a.batch_id IN (SELECT id FROM scoped_batches) AND a.due_at >= %(from_date)s::date AND a.due_at < %(to_date)s::date+1
       AND a.status='active' AND a.approval_status='approved'
       AND (%(semester_id)s::uuid IS NULL OR yss.semester_id=%(semester_id)s)
+      AND su.name !~* 'eval'
       AND (%(mentor_id)s::uuid IS NULL OR EXISTS (SELECT 1 FROM faculty_subjects fs JOIN curriculum cu ON cu.id=fs.curriculum_id
           WHERE fs.faculty_id=%(mentor_id)s AND fs.batch_semester_id=a.batch_semester_id AND cu.subject_id=a.subject_id))"""
     return sql, params(f) | metric_settings()
@@ -88,6 +93,7 @@ def score_facts(f):
       AND a.status='active' AND a.approval_status='approved'
       AND sub.graded_at IS NOT NULL AND sub.marks IS NOT NULL AND a.max_score>0
       AND (%(semester_id)s::uuid IS NULL OR yss.semester_id=%(semester_id)s)
+      AND su.name !~* 'eval'
       AND (%(mentor_id)s::uuid IS NULL OR EXISTS (SELECT 1 FROM faculty_subjects fs JOIN curriculum cu ON cu.id=fs.curriculum_id
           WHERE fs.faculty_id=%(mentor_id)s AND fs.batch_semester_id=a.batch_semester_id AND cu.subject_id=a.subject_id))"""
     return sql, params(f) | metric_settings()
@@ -215,10 +221,10 @@ class ChartContext:
             )
             rows = query(
                 f"""SELECT {group} AS name,
-                round(100.0*count(*) FILTER(WHERE status='scheduled' AND actual_start IS NULL
+                round(100.0*count(*) FILTER(WHERE status='missed' OR (status='scheduled' AND actual_start IS NULL
                   AND actual_end IS NULL AND NOT EXISTS(
                     SELECT 1 FROM attendance_records ar WHERE ar.session_id=x.id
-                  ))/nullif(count(*),0),1) AS value
+                  )))/nullif(count(*),0),1) AS value
                 FROM ({sql}) x
                 WHERE date<now() AT TIME ZONE 'UTC'
                 GROUP BY 1 ORDER BY 1""",
@@ -229,9 +235,15 @@ class ChartContext:
                 unit="%",
                 note="Unresolved delivery evidence: elapsed sessions still scheduled with no start/end telemetry or attendance. The source does not identify confirmed or approved cancellations.",
             )
-        if metric in {"assess", "score"}:
-            sql, p = score_facts(f) if metric == "score" else assessment_facts(f)
-            expression = COMP_RATE if metric == "assess" else SCORE_RATE
+        if metric == "score":
+            return dataset(
+                [],
+                unit="%",
+                note="We do not currently store examination or weekly assessment score data in the database. No placeholder or mock score data is displayed.",
+            )
+        if metric == "assess":
+            sql, p = assessment_facts(f)
+            expression = COMP_RATE
             group = {"time": time, "batch": "batch", "subject": "subject", "semester": "semester"}.get(
                 dimension, time
             )
@@ -344,13 +356,19 @@ class ChartContext:
             )
         if metric == "ontime" and self.metric_data("ontime")["status"] == "unavailable":
             return unavailable(TIMING_GAP)
+        if metric == "score":
+            return dataset(
+                [],
+                unit="%",
+                note="We do not currently store examination or weekly assessment score data in the database. No placeholder or mock score data is displayed.",
+            )
         if metric == "feedback":
             sql, p = scoped("mentor_feedback", self.f)
             expr = "round(avg(rating), 2)"
             condition = ""
-        elif metric in {"assess", "score"}:
-            sql, p = score_facts(self.f) if metric == "score" else assessment_facts(self.f)
-            expr = COMP_RATE if metric == "assess" else SCORE_RATE
+        elif metric == "assess":
+            sql, p = assessment_facts(self.f)
+            expr = COMP_RATE
             condition = ""
         elif metric == "ontime":
             sql, p = scoped("sessions", self.f)
@@ -358,10 +376,10 @@ class ChartContext:
             condition = ""
         elif metric == "missed":
             sql, p = scoped("sessions", self.f)
-            expr = """round(100.0*count(*) FILTER(WHERE status='scheduled' AND actual_start IS NULL
+            expr = """round(100.0*count(*) FILTER(WHERE status='missed' OR (status='scheduled' AND actual_start IS NULL
               AND actual_end IS NULL AND NOT EXISTS(
                 SELECT 1 FROM attendance_records ar WHERE ar.session_id=x.id
-              ))/nullif(count(*),0),1)"""
+              )))/nullif(count(*),0),1)"""
             condition = ""
         else:
             return unavailable(
@@ -447,6 +465,12 @@ class ChartContext:
                     note="Recorded milestone flags on scoped allocations. Milestones are independent checks, not a sequential funnel or proof of demo readiness.",
                 )
         if domain == "trends":
+            if self.metric == "score":
+                return dataset(
+                    [],
+                    unit="%",
+                    note="We do not currently store examination or weekly assessment score data in the database. No placeholder or mock score data is displayed.",
+                )
             if mode == "heatmap":
                 return self.metric_heatmap(self.metric)
             if mode != "series":
@@ -593,10 +617,12 @@ class ChartContext:
                     FROM class_sessions cs
                     JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
                     JOIN year_specialization_semesters yss ON yss.id = bs.year_specialization_semester_id
+                    JOIN subjects su ON su.id = cs.subject_id
                     WHERE cs.counts_for_attendance
                       AND bs.batch_id IN (SELECT id FROM scoped_batches)
                       AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
                       AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s)
+                      AND su.name !~* 'eval'
                 ),
                 calendar_dates AS (
                     SELECT d::date AS date
@@ -612,12 +638,14 @@ class ChartContext:
                     JOIN class_sessions cs ON cs.id = ar.session_id
                     JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
                     JOIN year_specialization_semesters yss ON yss.id = bs.year_specialization_semester_id
+                    JOIN subjects su ON su.id = cs.subject_id
                     WHERE cs.counts_for_attendance
                       AND cs.scheduled_start >= (SELECT start_date FROM academic_bounds) 
                       AND cs.scheduled_start < (SELECT end_date + 1 FROM academic_bounds)
                       AND bs.batch_id IN (SELECT id FROM scoped_batches)
                       AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
                       AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s)
+                      AND su.name !~* 'eval'
                     GROUP BY cs.scheduled_start::date
                 ),
                 intern_joins AS (
@@ -663,6 +691,7 @@ class ChartContext:
                     JOIN class_sessions cs ON cs.id = ar.session_id
                     JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
                     JOIN year_specialization_semesters yss ON yss.id = bs.year_specialization_semester_id
+                    JOIN subjects su ON su.id = cs.subject_id
                     JOIN academic_memberships am ON am.student_id = ar.student_id AND am.start_date <= cs.scheduled_start::date
                     LEFT JOIN intern_joins ij ON ij.student_id = ar.student_id
                     WHERE cs.counts_for_attendance
@@ -673,6 +702,7 @@ class ChartContext:
                       AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
                       AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s)
                       AND (ij.intern_join_date IS NULL OR ij.intern_join_date >= cs.scheduled_start::date)
+                      AND su.name !~* 'eval'
                     GROUP BY cs.scheduled_start::date
                 )
                 SELECT 
@@ -759,12 +789,19 @@ class ChartContext:
                         grouped.setdefault(str(row["name"]), {"name": row["name"]})[row["batch"]] = row[
                             "value"
                         ]
-                    return dataset(list(grouped.values()), batches, unit="%")
+                    interval_str = "Daily" if mode == "daily" or self.granularity == "daily" else "Weekly"
+                    return dataset(
+                        list(grouped.values()),
+                        batches,
+                        unit="%",
+                        title=f"{interval_str} Batch-Wise Attendance Trend",
+                    )
                 gran = self.granularity
                 self.granularity = mode
                 result = self.metric_data("att")
                 self.granularity = gran
-                return result
+                interval_str = "Daily" if mode == "daily" or gran == "daily" else "Weekly"
+                return result | {"title": f"{interval_str} Student Attendance Trend"}
             if mode == "absences":
                 sql = f"""WITH scoped_batches AS ({BATCH_SCOPE})
                 SELECT 
@@ -797,6 +834,7 @@ class ChartContext:
                   AND bs.batch_id IN (SELECT id FROM scoped_batches)
                   AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
                   AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s)
+                  AND su.name !~* 'eval'
                 GROUP BY cs.scheduled_start::date, cs.id, coalesce(cs.title, su.name), su.name, su.id, b.name, b.id, sm.number, sm.id, gy.start_year, gy.end_year, gy.id
                 ORDER BY cs.scheduled_start::date, sm.number, b.name, su.name"""
                 p = params(f) | metric_settings()
@@ -930,7 +968,8 @@ class ChartContext:
             if mode in {"weekly", "daily_sla"}:
                 if mode == "daily_sla":
                     self.granularity = "daily"
-                return self.metric_data("ontime")
+                res = self.metric_data("ontime")
+                return res | {"title": "On-Time Class Delivery Trend"}
             if mode == "daily":
                 return group_chart(
                     "sessions",
@@ -992,10 +1031,13 @@ class ChartContext:
             )
         if domain == "assessment":
             if mode in {"completion", "score", "semester", "batch_score"}:
-                return self.metric_data(
+                res = self.metric_data(
                     "assess" if mode == "completion" else "score",
                     {"semester": "semester", "batch_score": "batch"}.get(mode, "time"),
                 )
+                if mode == "completion":
+                    return res | {"title": "Assignment Completion Trend"}
+                return res
             if mode == "scatter":
                 rows = student_scatter(f, self.user)
                 return dataset(
@@ -1047,11 +1089,67 @@ class ChartContext:
                 sql, p = assessment_facts(f)
                 return dataset(
                     query(
-                        f"SELECT semester AS row,batch AS column,round(100.0*count(graded_at)/nullif(count(submission_id),0),1) AS value FROM ({sql}) x GROUP BY 1,2 ORDER BY 1,2",
+                        f"SELECT semester AS row,batch AS column,round(100.0*count(submission_id)/nullif(count(*),0),1) AS value FROM ({sql}) x GROUP BY 1,2 ORDER BY 1,2",
                         p,
                     ),
                     unit="%",
-                    note="Evaluation progress by semester and batch; full examination lifecycle stages are not available.",
+                    note="Assignment completion rate by semester and batch (submitted / eligible student obligations; eval subjects excluded).",
+                )
+            if mode == "submission_trend":
+                sql, p = assessment_facts(f)
+                bucket = "day" if self.granularity == "daily" or f.from_date == f.to_date else "week"
+                rows = query(
+                    f"""SELECT date_trunc('{bucket}',date)::date AS name,
+                      count(submission_id) FILTER (WHERE submitted_at <= date) AS "On-time submitted",
+                      count(submission_id) FILTER (WHERE submitted_at > date) AS "Late submitted",
+                      count(submission_id) AS "Total submitted"
+                    FROM ({sql}) x GROUP BY 1 ORDER BY 1""",
+                    p,
+                )
+                return dataset(
+                    rows,
+                    series=["On-time submitted", "Late submitted", "Total submitted"],
+                    note=f"Assignment submissions over time ({bucket} interval). On-time submissions are those uploaded by deadline (eval subjects excluded).",
+                )
+            if mode == "submission_status":
+                sql, p = assessment_facts(f)
+                rows = query(
+                    f"""
+                    SELECT 'On-time submitted' AS name, count(submission_id) FILTER (WHERE submitted_at <= date) AS value
+                    FROM ({sql}) x
+                    UNION ALL
+                    SELECT 'Late submitted' AS name, count(submission_id) FILTER (WHERE submitted_at > date) AS value
+                    FROM ({sql}) x
+                    UNION ALL
+                    SELECT 'Unsubmitted' AS name, count(*) - count(submission_id) AS value
+                    FROM ({sql}) x
+                    """,
+                    p,
+                )
+                return dataset(
+                    rows,
+                    note="Overall assignment submission status across eligible student obligations in selected period (eval subjects excluded).",
+                )
+            if mode == "subject_completion":
+                sql, p = assessment_facts(f)
+                rows = query(
+                    f"""
+                    SELECT 
+                        subject AS name,
+                        round(100.0 * count(submission_id) / nullif(count(*), 0), 1) AS value,
+                        count(submission_id) FILTER (WHERE submitted_at <= date) AS on_time,
+                        count(submission_id) AS submitted,
+                        count(*) AS eligible
+                    FROM ({sql}) x
+                    GROUP BY 1
+                    ORDER BY value DESC
+                    """,
+                    p,
+                )
+                return dataset(
+                    rows,
+                    unit="%",
+                    note="Assignment completion percentage by subject (submitted / eligible student obligations; eval subjects excluded).",
                 )
         if domain == "quality":
             group = {"area": "category", "severity": "severity", "pareto": "title"}[mode]
@@ -1110,7 +1208,7 @@ class ChartContext:
             if f.mentor_id:
                 mentor_row = one("SELECT name FROM users WHERE id=%s", (f.mentor_id,))
                 if mentor_row and mentor_row.get("name"):
-                    extra["title"] = f"Feedback distribution · {mentor_row['name']}"
+                    extra["title"] = f"Student Rating Distribution · {mentor_row['name']}"
             rows = query(
                 f"SELECT round(rating)::int AS name,count(*) AS value FROM ({sql}) x GROUP BY 1 ORDER BY 1",
                 p,
@@ -1290,7 +1388,7 @@ class ChartContext:
 
 @router.get("/manifest")
 def manifest(user=Depends(current_user)):
-    return MANIFEST
+    return get_manifest()
 
 
 @router.get("/{view}/{tab}")
@@ -1308,7 +1406,8 @@ def charts(
     attendance_heatmap_mode: str = Query(default="percentage", pattern="^(percentage|absolute|unique)$"),
     user=Depends(current_user),
 ):
-    section = MANIFEST["sections"].get(view)
+    manifest_data = get_manifest()
+    section = manifest_data["sections"].get(view)
     if not section:
         raise HTTPException(404, "Unknown chart section")
     context = ChartContext(
@@ -1342,7 +1441,7 @@ def charts(
                 else "delivery_target"
                 if provider and provider.startswith("delivery.")
                 else "completion_target"
-                if provider == "assessment.completion"
+                if provider in {"assessment.completion", "assessment.subject_completion", "assessment.progress_heatmap"}
                 else "sla_target"
                 if provider == "support.sla"
                 else "task_target"
@@ -1358,5 +1457,69 @@ def charts(
                     "taskOn": "task_target",
                 }.get(metric)
             data["target"] = cfg.get(target_key) if target_key else None
-        result.append(spec | data)
+        chart_item = spec | data
+        if view == "trends":
+            interval_str = granularity.capitalize() if granularity else "Weekly"
+            m = metric or "feedback"
+            if spec["id"] == "trends-1":
+                metric_series_titles = {
+                    "feedback": f"{interval_str} Mentor Feedback Rating Trend",
+                    "att": f"{interval_str} Student Attendance Trend",
+                    "ontime": f"{interval_str} On-Time Class Delivery Trend",
+                    "missed": f"{interval_str} Missed-Class Rate Trend",
+                    "assess": f"{interval_str} Assignment Completion Trend",
+                    "score": f"{interval_str} Average Assessment Score Trend",
+                    "slaIssue": f"{interval_str} Support Ticket SLA Compliance Trend",
+                    "taskOn": f"{interval_str} Task On-Time Completion Trend",
+                }
+                chart_item["title"] = metric_series_titles.get(m, f"{interval_str} Metric Performance Trend")
+            elif spec["id"] == "trends-2":
+                metric_batch_titles = {
+                    "feedback": "Mentor Feedback Rating by Batch",
+                    "att": "Student Attendance Rate by Batch",
+                    "ontime": "On-Time Class Delivery Rate by Batch",
+                    "missed": "Missed-Class Rate by Batch",
+                    "assess": "Assignment Completion Rate by Batch",
+                    "score": "Average Assessment Score by Batch",
+                    "slaIssue": "Support SLA Compliance by Batch",
+                    "taskOn": "Task On-Time Completion by Batch",
+                }
+                chart_item["title"] = metric_batch_titles.get(m, "Ranking by Batch")
+            elif spec["id"] == "trends-3":
+                metric_mentor_titles = {
+                    "feedback": "Mentor Feedback Rating by Faculty",
+                    "att": "Student Attendance Rate by Mentor",
+                    "ontime": "On-Time Delivery Rate by Mentor",
+                    "missed": "Missed Class Sessions by Mentor",
+                    "assess": "Assignment Completion Rate by Mentor",
+                    "score": "Average Assessment Score by Mentor",
+                    "slaIssue": "Support SLA Compliance by Owner",
+                    "taskOn": "Task On-Time Completion by Assignee",
+                }
+                chart_item["title"] = metric_mentor_titles.get(m, "Ranking by Mentor")
+            elif spec["id"] == "trends-4":
+                metric_subject_titles = {
+                    "feedback": "Mentor Feedback Rating by Subject",
+                    "att": "Student Attendance Rate by Subject",
+                    "ontime": "On-Time Delivery Rate by Subject",
+                    "missed": "Missed Class Sessions by Subject",
+                    "assess": "Assignment Completion Rate by Subject",
+                    "score": "Average Assessment Score by Subject",
+                    "slaIssue": "Support SLA Compliance by Category",
+                    "taskOn": "Task On-Time Completion by Category",
+                }
+                chart_item["title"] = metric_subject_titles.get(m, "Ranking by Subject")
+            elif spec["id"] == "trends-5":
+                metric_heatmap_titles = {
+                    "feedback": "Mentor Feedback Rating Heatmap (Batch × Timeline)",
+                    "att": "Student Attendance Heatmap (Batch × Timeline)",
+                    "ontime": "On-Time Delivery Heatmap (Batch × Timeline)",
+                    "missed": "Missed-Class Rate Heatmap (Batch × Timeline)",
+                    "assess": "Assignment Completion Heatmap (Batch × Timeline)",
+                    "score": "Assessment Score Heatmap (Batch × Timeline)",
+                    "slaIssue": "Support SLA Compliance Heatmap (Batch × Timeline)",
+                    "taskOn": "Task Completion Heatmap (Batch × Timeline)",
+                }
+                chart_item["title"] = metric_heatmap_titles.get(m, "Heatmap · Batch × Timeline")
+        result.append(chart_item)
     return {"charts": result, "metric": metric, "granularity": granularity}

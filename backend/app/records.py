@@ -57,10 +57,10 @@ def source_query(
     if (
         name in {"sessions", "internship_sessions"}
         and status
-        and status not in {"completed", "cancelled", "scheduled", "in_progress"}
+        and status not in {"completed", "cancelled", "scheduled", "in_progress", "missed"}
     ):
         raise HTTPException(
-            422, "Class delivery status must be completed, cancelled, scheduled or in progress"
+            422, "Class delivery status must be completed, cancelled, scheduled, in progress or missed"
         )
     attendance_filters = {
         "below40": "r.attendance<40",
@@ -113,7 +113,10 @@ def source_query(
     if source.date_filter and apply_dates:
         conditions.append("r.date >= %(from_date)s::date AND r.date < %(to_date)s::date+1")
     if source.scope in {"batch", "student"}:
-        batch_expr = "r.batch_id IN (SELECT id FROM scoped_batches)"
+        if name == "students" and not has_scope:
+            batch_expr = "(r.batch_id IS NULL OR r.batch_id IN (SELECT id FROM scoped_batches))"
+        else:
+            batch_expr = "r.batch_id IN (SELECT id FROM scoped_batches)"
         if name in {"sessions", "internship_sessions"}:
             batch_expr = f"({batch_expr} OR r.linked_batches && ARRAY(SELECT id FROM scoped_batches))"
         conditions.append(batch_expr)
@@ -186,11 +189,10 @@ def source_query(
     if name == "students" and risk_status:
         conditions.append("r.risk=%(risk_status_filter)s")
     if name == "students" and preset == "academic:risk":
-        conditions.append("r.status='active'")
         if not attendance_band:
             conditions.append("r.attendance<%(risk_attendance)s")
     elif name == "students" and preset == "exceptions:students":
-        conditions.append("r.status='active' AND cardinality(r.risk_reasons)>0")
+        conditions.append("cardinality(r.risk_reasons)>0")
     return (
         source,
         f"WITH scoped_batches AS ({BATCH_SCOPE}), r AS ({source.sql}) SELECT * FROM r WHERE "

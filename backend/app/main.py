@@ -164,7 +164,7 @@ def search(q: str = "", user=Depends(current_user)):
        SELECT sb.id::text AS id,u.name AS title,'students' AS source,'Student' AS type
        FROM users u JOIN student_batches sb ON sb.student_id=u.id WHERE u.name ILIKE %(q)s
        UNION ALL SELECT cs.id::text,coalesce(cs.title,su.name),'sessions','Class session'
-       FROM class_sessions cs JOIN subjects su ON su.id=cs.subject_id WHERE coalesce(cs.title,su.name) ILIKE %(q)s
+       FROM class_sessions cs JOIN subjects su ON su.id=cs.subject_id WHERE su.name !~* 'eval' AND coalesce(cs.title,su.name) ILIKE %(q)s
     ) hits ORDER BY title LIMIT 20""",
         {"q": f"%{q}%"},
     )

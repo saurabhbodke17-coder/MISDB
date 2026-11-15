@@ -73,6 +73,8 @@ reports/
 outputs/
 .workbooks/
 *.inspect.ndjson
+*.csv
+.kiro/
 
 # Logs and operating-system/editor artifacts.
 *.log

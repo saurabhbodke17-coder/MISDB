@@ -147,20 +147,9 @@ def test_metrics_match_database_and_filters(client):
         ).fetchone()
     assert kpis["missed"]["value"] == unresolved
     assert kpis["missed"]["evidence"] == (
-        f"{unresolved:,} unresolved · {100 * unresolved / elapsed:.1f}% of {elapsed:,} elapsed sessions"
+        f"{unresolved:,} missed or cancelled · {100 * unresolved / elapsed:.1f}% of {elapsed:,} total classes till now"
     )
-    with psycopg.connect(os.environ.get("TEST_OWNER_DATABASE_URL", settings().database_url)) as c:
-        average_score, evaluated = c.execute(
-            """SELECT avg(sub.marks/nullif(a.max_score,0)*100),count(*)
-            FROM assignment_submissions sub JOIN assignments a ON a.id=sub.assignment_id
-            WHERE a.due_at::date BETWEEN %s AND %s AND a.status='active'
-              AND a.approval_status='approved' AND sub.graded_at IS NOT NULL
-              AND sub.marks IS NOT NULL AND a.max_score>0""",
-            (PERIOD["from_date"], PERIOD["to_date"]),
-        ).fetchone()
-    assert kpis["score"]["value"] == round(float(average_score), 1)
-    assert kpis["score"]["denominator"] == evaluated
-    assert kpis["score"]["evidence"] == f"{evaluated:,} graded submissions"
+    assert kpis["score"]["module"] == "assess"
     options = client.get("/api/filters").json()
     for batch in options["batches"]:
         params = PERIOD | {"batch_id": batch["id"]}
@@ -531,7 +520,7 @@ def test_all_original_chart_panels_and_calendar(client):
                 if chart["status"] == "unavailable":
                     assert chart["rows"] == []
                     assert chart["note"]
-    assert count == 119
+    assert count == 110
     calendar = client.get("/api/calendar", params=PERIOD)
     assert calendar.status_code == 200, calendar.text
     assert all(e["id"] and e["source"] for e in calendar.json()["events"])

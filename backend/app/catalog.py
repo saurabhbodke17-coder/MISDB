@@ -27,7 +27,7 @@ SOURCES = {
         JOIN class_sessions cs ON cs.id=ar.session_id JOIN batch_semesters bs ON bs.id=cs.batch_semester_id
         JOIN year_specialization_semesters yss ON yss.id=bs.year_specialization_semester_id
         JOIN batches b ON b.id=coalesce(ar.home_batch_id,bs.batch_id) JOIN subjects su ON su.id=cs.subject_id
-        WHERE cs.counts_for_attendance
+        WHERE cs.counts_for_attendance AND su.name !~* 'eval'
     """,
         ("student", "batch", "subject", "date", "status"),
     ),
@@ -35,29 +35,45 @@ SOURCES = {
         "Class delivery register",
         """
         SELECT cs.id,coalesce(cs.title,su.name) AS title,su.name AS subject,u.name AS mentor,b.name AS batch,
-          cs.scheduled_start AS date,cs.scheduled_end,cs.status,ls.actual_start,ls.actual_end,
+          cs.scheduled_start AS date,cs.scheduled_end,
+          CASE
+            WHEN cs.status IN ('scheduled', 'in_progress') AND (coalesce(cs.scheduled_end, cs.scheduled_start + interval '1 hour') + interval '15 minutes') < now() AT TIME ZONE 'UTC' THEN
+              CASE WHEN EXISTS (SELECT 1 FROM attendance_records ar WHERE ar.session_id = cs.id) THEN 'completed'
+                   ELSE 'missed' END
+            ELSE cs.status
+          END AS status,
+          ls.actual_start,ls.actual_end,
           cs.counts_for_attendance,bs.batch_id,cs.faculty_id AS mentor_id,yss.semester_id,
           ARRAY[]::uuid[] AS linked_batches
         FROM class_sessions cs JOIN batch_semesters bs ON bs.id=cs.batch_semester_id
         JOIN year_specialization_semesters yss ON yss.id=bs.year_specialization_semester_id
         JOIN batches b ON b.id=bs.batch_id JOIN subjects su ON su.id=cs.subject_id JOIN users u ON u.id=cs.faculty_id
         LEFT JOIN LATERAL (SELECT min(actual_start) AS actual_start,max(actual_end) AS actual_end FROM live_sessions WHERE class_session_id=cs.id) ls ON true
+        WHERE su.name !~* 'eval'
     """,
         ("title", "batch", "mentor", "date", "status", "actual_start"),
-        note="Scheduled timestamps are stored as UTC. Actual starts come from live-session telemetry; completion and punctuality are separate measures.",
+        note="Scheduled timestamps are stored as UTC. During class and up to 15 minutes after scheduled end, active sessions remain ongoing. After 15 minutes past scheduled end, attendance criteria applies: sessions with attendance records are marked completed; otherwise missed. Actual starts come from live-session telemetry; completion and punctuality are separate measures.",
     ),
     "students": Source(
         "Student performance",
         """
-        SELECT sb.id,u.id AS student_id,u.name AS student,
-          CASE WHEN current_sem.number IS NULL THEN b.name
+        SELECT coalesce(sb.id, u.id) AS id, u.id AS student_id, u.name AS student,
+          CASE WHEN b.id IS NULL THEN 'Unassigned'
+            WHEN current_sem.number IS NULL THEN b.name
             WHEN b.name ~* '^Section[[:space:]]+' THEN
               'Sem ' || current_sem.number::text || regexp_replace(b.name,'^Section[[:space:]]+','','i')
             ELSE 'Sem ' || current_sem.number::text || ' ' || b.name END AS batch,
-          sb.status,sb.joined_at AS date,sb.batch_id,NULL::uuid AS mentor_id,current_sem.id AS semester_id,
+          coalesce(sb.status, CASE WHEN u.is_active THEN 'active' ELSE 'inactive' END) AS status,
+          coalesce(sb.joined_at, u.created_at) AS date,
+          sb.batch_id,
+          NULL::uuid AS mentor_id,
+          current_sem.id AS semester_id,
           att.attendance,att.recorded,marks.average_score,marks.evaluated,
           CASE WHEN att.attendance < %(risk_attendance)s THEN 'Attendance follow-up' ELSE 'No attendance flag' END AS risk
-        FROM student_batches sb JOIN users u ON u.id=sb.student_id JOIN batches b ON b.id=sb.batch_id
+        FROM users u
+        JOIN roles r ON r.id = u.role_id AND r.name = 'student'
+        LEFT JOIN student_batches sb ON sb.student_id = u.id
+        LEFT JOIN batches b ON b.id = sb.batch_id
         LEFT JOIN LATERAL (
           SELECT s.id,s.number FROM batch_semesters active_bs
           JOIN year_specialization_semesters yss ON yss.id=active_bs.year_specialization_semester_id
@@ -92,7 +108,7 @@ SOURCES = {
         False,
     ),
     "internship_students": Source(
-        "Internship batch students",
+        "Internship Student Roster",
         """
         SELECT sb.id,u.id AS student_id,u.name AS student,
           concat(b.name,' · ',gy.start_year,'–',gy.end_year) AS batch,
@@ -162,13 +178,19 @@ SOURCES = {
         False,
     ),
     "internship_sessions": Source(
-        "Internship class delivery",
+        "Internship Class Delivery Register",
         """
         SELECT cs.id,coalesce(cs.title,su.name) AS title,
           concat(b.name,' · ',gy.start_year,'–',gy.end_year) AS batch,
           sp.name AS program,concat(gy.start_year,'–',gy.end_year) AS cohort,
           concat('Semester ',sem.number) AS semester,su.name AS subject,u.name AS mentor,
-          cs.scheduled_start AS date,cs.scheduled_end,cs.status,
+          cs.scheduled_start AS date,cs.scheduled_end,
+          CASE
+            WHEN cs.status IN ('scheduled', 'in_progress') AND (coalesce(cs.scheduled_end, cs.scheduled_start + interval '1 hour') + interval '15 minutes') < now() AT TIME ZONE 'UTC' THEN
+              CASE WHEN EXISTS (SELECT 1 FROM attendance_records ar WHERE ar.session_id = cs.id) THEN 'completed'
+                   ELSE 'missed' END
+            ELSE cs.status
+          END AS status,
           live.actual_start,live.actual_end,
           CASE WHEN live.actual_start IS NOT NULL AND live.actual_start>cs.scheduled_start AT TIME ZONE 'UTC'+make_interval(mins=>%(late_tolerance)s) THEN 'Delayed'
                ELSE 'On time' END AS delivery_timing,
@@ -188,6 +210,7 @@ SOURCES = {
           SELECT min(actual_start) AS actual_start,max(actual_end) AS actual_end
           FROM live_sessions WHERE class_session_id=cs.id
         ) live ON true
+        WHERE su.name !~* 'eval'
     """,
         (
             "title",
@@ -214,6 +237,7 @@ SOURCES = {
           ARRAY(SELECT fs.faculty_id FROM faculty_subjects fs JOIN curriculum cu ON cu.id=fs.curriculum_id WHERE fs.batch_semester_id=a.batch_semester_id AND cu.subject_id=a.subject_id) AS mentor_ids
         FROM assignments a JOIN batches b ON b.id=a.batch_id JOIN subjects su ON su.id=a.subject_id
         JOIN batch_semesters bs ON bs.id=a.batch_semester_id JOIN year_specialization_semesters yss ON yss.id=bs.year_specialization_semester_id
+        WHERE su.name !~* 'eval'
     """,
         ("title", "batch", "subject", "date", "submissions", "evaluated", "approval_status"),
     ),
@@ -227,6 +251,7 @@ SOURCES = {
         LEFT JOIN users u ON u.id=r.student_id JOIN batch_semesters bs ON bs.id=e.batch_semester_id
         JOIN year_specialization_semesters yss ON yss.id=bs.year_specialization_semester_id
         JOIN batches b ON b.id=bs.batch_id LEFT JOIN subjects su ON su.id=e.subject_id
+        WHERE (su.name IS NULL OR su.name !~* 'eval')
     """,
         ("student", "title", "batch", "marks_obtained", "total_marks", "percentage", "status"),
     ),
@@ -238,6 +263,7 @@ SOURCES = {
         FROM examinations e JOIN batch_semesters bs ON bs.id=e.batch_semester_id
         JOIN year_specialization_semesters yss ON yss.id=bs.year_specialization_semester_id
         JOIN batches b ON b.id=bs.batch_id LEFT JOIN subjects su ON su.id=e.subject_id
+        WHERE (su.name IS NULL OR su.name !~* 'eval')
     """,
         ("title", "batch", "subject", "date", "start_time", "status"),
     ),
@@ -245,22 +271,24 @@ SOURCES = {
         "Mentor delivery",
         """
         SELECT u.id,u.name AS mentor,count(cs.id) AS sessions,
-          count(cs.id) FILTER(WHERE cs.status='completed') AS completed,
-          count(cs.id) FILTER(WHERE ls.actual_start IS NOT NULL OR cs.status='completed') AS timed_sessions,
+          count(cs.id) FILTER(WHERE cs.status='completed' OR (cs.status IN ('scheduled', 'in_progress') AND (coalesce(cs.scheduled_end, cs.scheduled_start + interval '1 hour') + interval '15 minutes') < now() AT TIME ZONE 'UTC' AND EXISTS (SELECT 1 FROM attendance_records ar WHERE ar.session_id=cs.id))) AS completed,
+          count(cs.id) FILTER(WHERE ls.actual_start IS NOT NULL OR cs.status='completed' OR (cs.status IN ('scheduled', 'in_progress') AND (coalesce(cs.scheduled_end, cs.scheduled_start + interval '1 hour') + interval '15 minutes') < now() AT TIME ZONE 'UTC' AND EXISTS (SELECT 1 FROM attendance_records ar WHERE ar.session_id=cs.id))) AS timed_sessions,
           count(cs.id) FILTER(WHERE ls.actual_start IS NOT NULL AND ls.actual_start > cs.scheduled_start AT TIME ZONE 'UTC' + make_interval(mins=>%(late_tolerance)s)) AS delayed_sessions,
           round(100.0 * (
-            count(cs.id) FILTER(WHERE ls.actual_start IS NOT NULL OR cs.status='completed') -
+            count(cs.id) FILTER(WHERE ls.actual_start IS NOT NULL OR cs.status='completed' OR (cs.status IN ('scheduled', 'in_progress') AND (coalesce(cs.scheduled_end, cs.scheduled_start + interval '1 hour') + interval '15 minutes') < now() AT TIME ZONE 'UTC' AND EXISTS (SELECT 1 FROM attendance_records ar WHERE ar.session_id=cs.id))) -
             count(cs.id) FILTER(WHERE ls.actual_start IS NOT NULL AND ls.actual_start > cs.scheduled_start AT TIME ZONE 'UTC' + make_interval(mins=>%(late_tolerance)s))
-          ) / nullif(count(cs.id) FILTER(WHERE ls.actual_start IS NOT NULL OR cs.status='completed'), 0), 1) AS on_time_delivery,
+          ) / nullif(count(cs.id) FILTER(WHERE ls.actual_start IS NOT NULL OR cs.status='completed' OR (cs.status IN ('scheduled', 'in_progress') AND (coalesce(cs.scheduled_end, cs.scheduled_start + interval '1 hour') + interval '15 minutes') < now() AT TIME ZONE 'UTC' AND EXISTS (SELECT 1 FROM attendance_records ar WHERE ar.session_id=cs.id))), 0), 1) AS on_time_delivery,
           NULL::date AS date,NULL::uuid AS batch_id,u.id AS mentor_id,NULL::uuid AS semester_id
         FROM users u JOIN class_sessions cs ON cs.faculty_id=u.id
         JOIN batch_semesters bs ON bs.id=cs.batch_semester_id
         JOIN year_specialization_semesters yss ON yss.id=bs.year_specialization_semester_id
+        JOIN subjects su ON su.id=cs.subject_id
         LEFT JOIN LATERAL (SELECT min(actual_start) AS actual_start FROM live_sessions WHERE class_session_id=cs.id) ls ON true
         WHERE cs.scheduled_start >= %(from_date)s::date AND cs.scheduled_start < %(to_date)s::date+1
         AND bs.batch_id IN (SELECT id FROM scoped_batches)
         AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id=%(mentor_id)s)
         AND (%(semester_id)s::uuid IS NULL OR yss.semester_id=%(semester_id)s)
+        AND su.name !~* 'eval'
         GROUP BY u.id,u.name
     """,
         ("mentor", "sessions", "completed", "timed_sessions", "delayed_sessions", "on_time_delivery"),
@@ -280,6 +308,7 @@ SOURCES = {
         JOIN batches b ON b.id=bs.batch_id JOIN subjects su ON su.id=cs.subject_id
         JOIN users u ON u.id=fr.faculty_id JOIN users stu ON stu.id=fr.student_id
         JOIN session_questions sq ON sq.id=fr.session_question_id
+        WHERE su.name !~* 'eval'
     """,
         ("student", "mentor", "session", "batch", "question", "response", "date"),
     ),
@@ -303,6 +332,7 @@ SOURCES = {
         JOIN year_specialization_semesters yss ON yss.id=bs.year_specialization_semester_id
         JOIN batches b ON b.id=bs.batch_id JOIN subjects su ON su.id=cs.subject_id
         JOIN users stu ON stu.id=fr.student_id JOIN users fac ON fac.id=fr.faculty_id
+        WHERE su.name !~* 'eval'
         GROUP BY fr.student_id,fr.session_id,fr.faculty_id,stu.name,fac.name,cs.title,su.name,
           b.name,bs.batch_id,yss.semester_id,cs.scheduled_start
         HAVING count(*) FILTER (

@@ -229,6 +229,7 @@ Numeric mentor feedback is numeric_rating and is averaged as sum/count of non-nu
 On-time delivery uses delivery_timing, which already applies the 10-minute grace rule.
 Treat active/current students as enrollment_status='active'. Missing evidence is not zero.
 When page filters are supplied, apply them unless the question explicitly overrides them.
+Always exclude subjects containing 'eval' (e.g. subject_name NOT ILIKE '%eval%'), especially in feedback, sessions, attendance, or ratings.
 Do not expose UUIDs unless needed to disambiguate the displayed result.
 
 REPORTING SCHEMA:\n{SCHEMA}
