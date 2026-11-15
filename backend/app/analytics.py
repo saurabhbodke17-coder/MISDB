@@ -633,6 +633,82 @@ def dashboard(f: Filters = Depends(filters), user=Depends(current_user)):
         p,
     )["total_risk"]
 
+    feedback_stats = one(
+        f"""
+        WITH scoped_batches AS ({BATCH_SCOPE}),
+        student_session_feedback AS (
+            SELECT 
+                fr.student_id,
+                fr.session_id,
+                cs.scheduled_start,
+                avg(fr.response_text::numeric) AS student_avg_rating
+            FROM session_feedback_responses fr
+            JOIN session_questions sq ON sq.id = fr.session_question_id
+            JOIN class_sessions cs ON cs.id = fr.session_id
+            JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
+            JOIN subjects su ON su.id = cs.subject_id
+            WHERE sq.question_type = 'rating'
+              AND fr.response_text ~ '^[1-5](\\.[0-9]+)?$'
+              AND su.name !~* 'eval'
+              AND bs.batch_id IN (SELECT id FROM scoped_batches)
+              AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s::uuid)
+              AND cs.scheduled_start >= (SELECT max(scheduled_start) - INTERVAL '90 days' FROM class_sessions)
+            GROUP BY fr.student_id, fr.session_id, cs.scheduled_start
+        )
+        SELECT 
+            round(avg(student_avg_rating), 2) AS avg_rating,
+            count(*) AS total_submissions,
+            count(DISTINCT student_id) AS student_count
+        FROM student_session_feedback
+        """,
+        p,
+    )
+
+    prior_feedback = one(
+        f"""
+        WITH scoped_batches AS ({BATCH_SCOPE}),
+        student_session_feedback AS (
+            SELECT 
+                fr.student_id,
+                fr.session_id,
+                cs.scheduled_start,
+                avg(fr.response_text::numeric) AS student_avg_rating
+            FROM session_feedback_responses fr
+            JOIN session_questions sq ON sq.id = fr.session_question_id
+            JOIN class_sessions cs ON cs.id = fr.session_id
+            JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
+            JOIN subjects su ON su.id = cs.subject_id
+            WHERE sq.question_type = 'rating'
+              AND fr.response_text ~ '^[1-5](\\.[0-9]+)?$'
+              AND su.name !~* 'eval'
+              AND bs.batch_id IN (SELECT id FROM scoped_batches)
+              AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s::uuid)
+              AND cs.scheduled_start < (SELECT max(scheduled_start) - INTERVAL '90 days' FROM class_sessions)
+              AND cs.scheduled_start >= (SELECT max(scheduled_start) - INTERVAL '180 days' FROM class_sessions)
+            GROUP BY fr.student_id, fr.session_id, cs.scheduled_start
+        )
+        SELECT round(avg(student_avg_rating), 2) AS prior_avg_rating
+        FROM student_session_feedback
+        """,
+        p,
+    )
+
+    feedback_avg = (
+        float(feedback_stats["avg_rating"])
+        if feedback_stats and feedback_stats.get("avg_rating") is not None
+        else None
+    )
+    prior_avg = (
+        float(prior_feedback["prior_avg_rating"])
+        if prior_feedback and prior_feedback.get("prior_avg_rating") is not None
+        else None
+    )
+    feedback_delta = (
+        round(feedback_avg - prior_avg, 2)
+        if feedback_avg is not None and prior_avg is not None
+        else None
+    )
+
     extras = [
         (
             "strength",
@@ -654,6 +730,13 @@ def dashboard(f: Filters = Depends(filters), user=Depends(current_user)):
             risk_students_count,
             "attendance",
             f"Distinct non-intern students with recorded attendance below {cfg['risk_attendance']:g}% in the selected period (active interns excluded; dropped students evaluated).",
+        ),
+        (
+            "mentor_feedback",
+            "Institute-Wide Mentor Feedback",
+            feedback_avg,
+            "mentors",
+            "Mean of student-session average feedback ratings across all mentors and classes over the last 3 months (90 days). Counts total student session feedback submissions and distinct participating students.",
         ),
         (
             "tasks",
@@ -685,27 +768,27 @@ def dashboard(f: Filters = Depends(filters), user=Depends(current_user)):
         ),
     ]
     for key, label, value, view, definition in extras:
-        result.append(
-            {
-                "key": key,
-                "label": label,
-                "value": value,
-                "unit": "",
-                "target": None,
-                "delta": None,
-                "definition": definition,
-                "module": view,
-                **(
-                    {
-                        "numerator": value,
-                        "denominator": current["scheduled"],
-                        "evidence": f"{value:,} missed or cancelled · {rate(value, current['scheduled']) or 0:.1f}% of {current['scheduled']:,} total classes till now",
-                    }
-                    if key == "missed"
-                    else {}
-                ),
-            }
-        )
+        extra_kpi = {
+            "key": key,
+            "label": label,
+            "value": value,
+            "unit": "/ 5" if key == "mentor_feedback" else "",
+            "target": 4.0 if key == "mentor_feedback" else None,
+            "delta": feedback_delta if key == "mentor_feedback" else None,
+            "definition": definition,
+            "module": view,
+        }
+        if key == "missed":
+            extra_kpi["numerator"] = value
+            extra_kpi["denominator"] = current["scheduled"]
+            extra_kpi["evidence"] = (
+                f"{value:,} missed or cancelled · {rate(value, current['scheduled']) or 0:.1f}% of {current['scheduled']:,} total classes till now"
+            )
+        elif key == "mentor_feedback":
+            total_subs = feedback_stats["total_submissions"] if feedback_stats else 0
+            stu_count = feedback_stats["student_count"] if feedback_stats else 0
+            extra_kpi["evidence"] = f"{total_subs:,} ratings · {stu_count:,} students"
+        result.append(extra_kpi)
     from .chart_data import ChartContext
 
     chart_context = ChartContext(f, user)
