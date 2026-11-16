@@ -21,6 +21,8 @@ def start_pool():
         min_size=1,
         max_size=5,
         timeout=10,
+        max_idle=60,
+        check=ConnectionPool.check_connection,
         configure=_configure_app_connection,
         kwargs={"row_factory": dict_row},
         open=True,
@@ -32,6 +34,8 @@ def start_pool():
             min_size=1,
             max_size=5,
             timeout=10,
+            max_idle=60,
+            check=ConnectionPool.check_connection,
             kwargs={
                 "row_factory": dict_row,
                 "options": (
