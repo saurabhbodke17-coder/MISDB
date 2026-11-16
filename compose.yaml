@@ -17,8 +17,8 @@ services:
     restart: unless-stopped
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgresql://polaris_api:${POSTGRES_API_PASSWORD:?Set a URL-safe API password}@db:5432/polaris_mis
       JWT_SECRET: ${JWT_SECRET:?Set at least 32 random characters}
@@ -36,8 +36,8 @@ services:
     restart: unless-stopped
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
