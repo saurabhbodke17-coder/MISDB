@@ -39,8 +39,8 @@ data/
 backups/
 .runtime/
 lms_schema_summary.json
-docs/production-import*
-docs/production-chart-validation.json
+docs/
+scripts/
 
 # Python environments, bytecode, tests and tool caches.
 .venv/
