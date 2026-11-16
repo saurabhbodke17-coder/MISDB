@@ -11,7 +11,7 @@ import type { Chart } from './ChartPanels';
 import { CalendarBoard } from './CalendarBoard';
 import { modules } from './modules';
 import type { Module } from './modules';
-import polarisLogo from '../../Polaris.png';
+import polarisLogo from './Polaris.png';
 import { AIAssistant } from './AIAssistant';
 import { StudentsAtRiskView } from './StudentsAtRiskView';
 
