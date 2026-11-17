@@ -1016,7 +1016,7 @@
         },
         {
           "id": "conflicts",
-          "label": "Conflict matrix",
+          "label": "Scheduling Conflicts",
           "source": "sessions"
         },
         {

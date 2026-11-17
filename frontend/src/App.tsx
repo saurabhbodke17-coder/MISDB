@@ -14,6 +14,7 @@ import type { Module } from './modules';
 import polarisLogo from './Polaris.png';
 import { AIAssistant } from './AIAssistant';
 import { StudentsAtRiskView } from './StudentsAtRiskView';
+import { ConflictsView } from './ConflictsView';
 
 declare global {
   interface Window {
@@ -768,11 +769,13 @@ function ModuleView({module,selectedTab,setTab,filters,options,dashboard,openRec
       </div>
     )}
     {module.id==='calendar'&&tab?.id==='calendar'&&<CalendarBoard filters={filters} onOpen={openRecord}/>}
-    {module.id==='attendance'&&['daily','weekly'].includes(tab?.id||'')&&<div className="chart-controls"><label>Attendance series <select value={breakdown} onChange={e=>setBreakdown(e.target.value)}><option value="institution">Institution-wide</option><option value="batch">By batch</option></select></label></div>}
-    {module.id==='attendance'&&tab?.id==='risk' ? (
+    {module.id==='calendar'&&tab?.id==='conflicts' ? (
+      <ConflictsView filters={filters} onOpen={openRecord} setToast={setToast} />
+    ) : module.id==='attendance'&&tab?.id==='risk' ? (
       <StudentsAtRiskView filters={filters} onOpen={openRecord} setToast={setToast} />
     ) : (
       <>
+        {module.id==='attendance'&&['daily','weekly'].includes(tab?.id||'')&&<div className="chart-controls"><label>Attendance series <select value={breakdown} onChange={e=>setBreakdown(e.target.value)}><option value="institution">Institution-wide</option><option value="batch">By batch</option></select></label></div>}
         <ChartPanels view={module.id} tab={tab?.id||'overview'} filters={effectiveFilters} metric={metric} granularity={granularity} breakdown={breakdown} onSelect={selectChart}/>
         {tab?.id==='rules'&&<Card title="Exception & risk rules"><div className="rules-panel"><h3>Evidence-based checks</h3><p>Completed classes without actual start timestamps and unmatched examination results are flagged from the source records.</p><p>Student risk currently uses one rule: recorded attendance below 40% is High Risk. Attendance at or above 40% is No Risk. Missing attendance remains unclassified as No attendance evidence and does not create an assumed risk.</p></div></Card>}
         {selection&&<div className="selection-chip">Chart selection: {selection}<button onClick={()=>setSelection('')}>Clear ×</button></div>}
