@@ -29,23 +29,27 @@ def start_pool():
     )
     pool.wait(timeout=15)
     if settings().source_database_url:
-        source_pool = ConnectionPool(
-            settings().source_database_url,
-            min_size=1,
-            max_size=5,
-            timeout=10,
-            max_idle=60,
-            check=ConnectionPool.check_connection,
-            kwargs={
-                "row_factory": dict_row,
-                "options": (
-                    '-c default_transaction_read_only=on -c search_path="LMS",public '
-                    "-c timezone=Asia/Kolkata -c statement_timeout=15000"
-                ),
-            },
-            open=True,
-        )
-        source_pool.wait(timeout=15)
+        try:
+            source_pool = ConnectionPool(
+                settings().source_database_url,
+                min_size=1,
+                max_size=5,
+                timeout=10,
+                max_idle=60,
+                check=ConnectionPool.check_connection,
+                kwargs={
+                    "row_factory": dict_row,
+                    "options": (
+                        '-c default_transaction_read_only=on -c search_path="LMS",public '
+                        "-c timezone=Asia/Kolkata -c statement_timeout=15000"
+                    ),
+                },
+                open=True,
+            )
+            source_pool.wait(timeout=20)
+        except Exception as exc:
+            import logging
+            logging.getLogger("uvicorn.error").warning("Source database pool initialization warning: %s", exc)
 
 
 @contextmanager
