@@ -284,15 +284,17 @@ function AttendanceDailyBar(props: any) {
   
   const hasAtt = payload.has_attendance ?? (payload.status === 'recorded');
   if (hasAtt) {
+    const barH = Math.max(2, height);
+    const barY = height < 2 ? y - (2 - height) : y;
     return (
       <rect
         x={x}
-        y={y}
+        y={barY}
         width={width}
-        height={height}
-        rx={3}
-        ry={3}
-        fill="#e0564c"
+        height={barH}
+        rx={Math.min(3, barH / 2)}
+        ry={Math.min(3, barH / 2)}
+        fill="#22c55e"
       />
     );
   }
@@ -354,13 +356,19 @@ function AttendanceOverallTooltip({ active, payload, label }: any) {
       </div>
       {hasAtt ? (
         <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+          {tot && (
+            <div style={{ color: 'var(--muted)', display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 4, paddingBottom: 4, borderBottom: '1px solid var(--line)' }}>
+              <span>Total students:</span>
+              <strong style={{ color: 'var(--ink)' }}>{tot}</strong>
+            </div>
+          )}
+          <div style={{ color: '#22c55e', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+            <span>Present students:</span>
+            <strong>{Number(data.present_students ?? data.value).toLocaleString('en-IN')}</strong>
+          </div>
           <div style={{ color: '#e0564c', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
             <span>Absent students:</span>
-            <strong>{Number(data.absent_students ?? data.value).toLocaleString('en-IN')}{tot ? ` (out of ${tot})` : ''}</strong>
-          </div>
-          <div style={{ color: '#38bdf8', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-            <span>Present students:</span>
-            <strong>{Number(data.present_students ?? 0).toLocaleString('en-IN')}</strong>
+            <strong>{Number(data.absent_students ?? (data.total_students - data.value)).toLocaleString('en-IN')}</strong>
           </div>
         </div>
       ) : (
@@ -412,10 +420,11 @@ function Plot({chart,onSelect,filters}:{chart:Chart;onSelect:(row:Point)=>void;f
   if(type==='scatter')return <div className="chart"><ResponsiveContainer width="100%" height="100%"><ScatterChart margin={{top:15,right:25,bottom:20,left:0}}><CartesianGrid stroke="var(--line)" strokeDasharray="3 3"/><XAxis dataKey="x" name="Attendance" type="number" domain={[0,100]} unit="%" tick={{fontSize:10,fill:'var(--muted)'}}/><YAxis dataKey="y" name="Average score" type="number" domain={[0,100]} unit="%" tick={{fontSize:10,fill:'var(--muted)'}}/><Tooltip contentStyle={{background:'var(--surface)',border:'1px solid var(--line)'}}/><Scatter data={chart.rows} fill={palette[0]} onClick={p=>{if(p?.payload)onSelect(p.payload as Point);}}/></ScatterChart></ResponsiveContainer></div>;
   const horizontal=type==='hbar';const lines=type==='line'||type==='spark';
   const isOverallDaily=chart.provider==='attendance.overall_daily';
-  return <div className={`chart ${horizontal&&chart.rows.length>6?'tall-chart':''}`}><ResponsiveContainer width="100%" height="100%"><ComposedChart data={chart.rows} layout={horizontal?'vertical':'horizontal'} margin={{top:15,right:type==='pareto'?20:25,bottom:10,left:horizontal?65:-15}} onClick={state=>{if(state?.activeLabel!=null){const point=chart.rows.find(r=>String(r.name)===String(state.activeLabel));if(point)onSelect(point);}}}>
+  const isCategoryVertical = !horizontal && !lines && chart.rows.some(r => typeof r.name === 'string' && !/^\d{4}-\d{2}-\d{2}/.test(r.name));
+  return <div className={`chart ${horizontal&&chart.rows.length>6?'tall-chart':isCategoryVertical?'category-bar-chart':''}`}><ResponsiveContainer width="100%" height="100%"><ComposedChart data={chart.rows} layout={horizontal?'vertical':'horizontal'} margin={{top:15,right:type==='pareto'?20:25,bottom:isCategoryVertical?50:10,left:horizontal?65:-15}} onClick={state=>{if(state?.activeLabel!=null){const point=chart.rows.find(r=>String(r.name)===String(state.activeLabel));if(point)onSelect(point);}}}>
     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)"/>
-    <XAxis dataKey={horizontal?undefined:'name'} type={horizontal?'number':'category'} domain={horizontal&&chart.unit==='/5'?[0,5]:undefined} tickFormatter={v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}/.test(v)?new Date(`${v.slice(0,10)}T00:00:00`).toLocaleDateString('en-IN',{month:'short',day:'numeric'}):String(v).length>22?String(v).slice(0,20)+'…':String(v)} tickLine={false} axisLine={false} tick={{fontSize:10,fill:'var(--muted)'}} minTickGap={20}/>
-    <YAxis dataKey={horizontal?'name':undefined} type={horizontal?'category':'number'} width={horizontal?(chart.id==='trends-4'?60:105):50} domain={!horizontal&&chart.unit==='%'?[0,100]:undefined} tick={{fontSize:10,fill:'var(--muted)'}} tickFormatter={v=>chart.id==='trends-4'?abbreviateWords(v):horizontal&&String(v).length>22?String(v).slice(0,20)+'…':String(v)} tickLine={false} axisLine={false}/>
+    <XAxis dataKey={horizontal?undefined:'name'} type={horizontal?'number':'category'} domain={horizontal&&chart.unit==='/5'?[0,5]:undefined} interval={isCategoryVertical?0:undefined} angle={isCategoryVertical?-35:0} textAnchor={isCategoryVertical?'end':'middle'} height={isCategoryVertical?65:30} tickFormatter={v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}/.test(v)?new Date(`${v.slice(0,10)}T00:00:00`).toLocaleDateString('en-IN',{month:'short',day:'numeric'}):String(v).length>22?String(v).slice(0,20)+'…':String(v)} tickLine={false} axisLine={false} tick={{fontSize:10,fill:'var(--muted)'}} minTickGap={isCategoryVertical?0:20}/>
+    <YAxis dataKey={horizontal?'name':undefined} type={horizontal?'category':'number'} width={horizontal?(chart.id==='trends-4'?60:105):50} domain={!horizontal&&chart.unit==='%'?[0,100]:!horizontal&&chart.unit==='/5'?[0,5]:undefined} tick={{fontSize:10,fill:'var(--muted)'}} tickFormatter={v=>horizontal?(chart.id==='trends-4'?abbreviateWords(v):String(v).length>22?String(v).slice(0,20)+'…':String(v)):chart.unit?`${v}${chart.unit}`:display(v)} tickLine={false} axisLine={false}/>
     {type==='pareto'&&<YAxis yAxisId="cumulative" orientation="right" domain={[0,100]} tick={{fontSize:10,fill:'var(--muted)'}} unit="%"/>}
     {chart.target!=null&&!horizontal&&<ReferenceLine y={chart.target} stroke="#168a5a" strokeDasharray="5 4" label={{value:`Target ${chart.target}${chart.unit}`,fontSize:10,fill:'#168a5a',position:'insideTopRight'}}/>}
     {isOverallDaily ? (
@@ -427,7 +436,7 @@ function Plot({chart,onSelect,filters}:{chart:Chart;onSelect:(row:Point)=>void;f
         formatter={(val: unknown, name: unknown) => [display(val)+(chart.unit?chart.unit:''), chartColumnLabel(chart, String(name))]}
       />
     )}
-    {chart.series.map((series,i)=>lines||series==='cumulative'?<Line key={series} dataKey={series} name={series==='value'?chart.title:series} yAxisId={series==='cumulative'?'cumulative':0} type="linear" stroke={palette[i%palette.length]} strokeWidth={2} strokeDasharray={series==='Previous period'?'5 4':undefined} dot={{r:3}} connectNulls={false}/>:<Bar key={series} dataKey={series} name={series==='value'?chart.title:series} stackId={chart.stacked?'workload':undefined} fill={isOverallDaily?'#e0564c':palette[i%palette.length]} radius={horizontal?[0,3,3,0]:[3,3,0,0]} maxBarSize={42} shape={isOverallDaily?<AttendanceDailyBar />:undefined}>{chart.series.length===1&&!isOverallDaily&&chart.rows.map((_,j)=><Cell key={j} fill={palette[j%palette.length]}/>)}</Bar>)}
+    {chart.series.map((series,i)=>lines||series==='cumulative'?<Line key={series} dataKey={series} name={series==='value'?chart.title:series} yAxisId={series==='cumulative'?'cumulative':0} type="linear" stroke={palette[i%palette.length]} strokeWidth={2} strokeDasharray={series==='Previous period'?'5 4':undefined} dot={{r:3}} connectNulls={false}/>:<Bar key={series} dataKey={series} name={series==='value'?chart.title:series} stackId={chart.stacked?'workload':undefined} fill={isOverallDaily?'#22c55e':palette[i%palette.length]} radius={horizontal?[0,3,3,0]:[3,3,0,0]} maxBarSize={42} shape={isOverallDaily?<AttendanceDailyBar />:undefined}>{chart.series.length===1&&!isOverallDaily&&chart.rows.map((_,j)=><Cell key={j} fill={palette[j%palette.length]}/>)}</Bar>)}
   </ComposedChart></ResponsiveContainer></div>;
 }
 function dynamicTitle(chart: Chart, view?: string, granularity?: string, breakdown?: string, metric?: string): string {
@@ -518,7 +527,7 @@ function dynamicTitle(chart: Chart, view?: string, granularity?: string, breakdo
   }
   if (view === 'attendance') {
     if (chart.id === 'attendance-overall' || chart.provider === 'attendance.overall_daily') {
-      return 'Daily Student Absence Timeline';
+      return 'Daily Student Attendance Timeline';
     }
     if (chart.id === 'attendance-2' || chart.render_as === 'class_absences') {
       return 'Class-Wise Daily Absence Breakdown';
@@ -695,16 +704,16 @@ function ChartCard({chart,onSelect,onPage,heatmapMode,onHeatmapMode,filters,view
   return <Card title={cardTitle} subtitle={chart.status==='unavailable'?'Source data required':chart.status==='empty'?'Connected · no matching records':'Database-derived · selected filters'} className={cardClasses} action={<div className="chart-card-actions">{onHeatmapMode&&<label className="heatmap-mode"><span>View</span><select aria-label="Attendance heatmap view" value={heatmapMode} onChange={e=>onHeatmapMode(e.target.value)}><option value="percentage">Percentage</option><option value="absolute">Absolute by session</option><option value="unique">Unique attenders</option></select></label>}<span className={`chart-source ${chart.status}`} title={chart.provider||chart.note}>{chart.status==='unavailable'?<Info size={13}/>:<Database size={13}/>}</span></div>}>
     {chart.summary && (
       <div className="compact-metrics" style={{margin:'0 0 16px 0'}}>
-        <div><span>Average daily absent students</span><strong>{chart.summary.avg_absent?.toLocaleString('en-IN') ?? '—'}</strong></div>
         <div><span>Average daily present students</span><strong>{chart.summary.avg_present?.toLocaleString('en-IN') ?? '—'}</strong></div>
+        <div><span>Average daily absent students</span><strong>{chart.summary.avg_absent?.toLocaleString('en-IN') ?? '—'}</strong></div>
         <div><span>Total active student base</span><strong>{chart.summary.total_students?.toLocaleString('en-IN') ?? '—'}</strong></div>
       </div>
     )}
     {isOverallDaily && (
       <div style={{display:'flex',gap:18,alignItems:'center',fontSize:12,color:'var(--muted)',marginBottom:14,flexWrap:'wrap'}}>
         <span style={{display:'inline-flex',alignItems:'center',gap:6}}>
-          <span style={{display:'inline-block',width:10,height:10,borderRadius:2,background:'#e0564c'}} />
-          <span>Recorded class absence</span>
+          <span style={{display:'inline-block',width:10,height:10,borderRadius:2,background:'#22c55e'}} />
+          <span>Recorded class attendance</span>
         </span>
         <span style={{display:'inline-flex',alignItems:'center',gap:6}}>
           <span style={{display:'inline-block',width:10,height:10,borderRadius:2,background:'#eab308'}} />
