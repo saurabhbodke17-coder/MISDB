@@ -633,8 +633,7 @@ def dashboard(f: Filters = Depends(filters), user=Depends(current_user)):
         p,
     )["total_risk"]
 
-    feedback_stats = one(
-        f"""
+    feedback_sql = f"""
         WITH scoped_batches AS ({BATCH_SCOPE}),
         student_session_feedback AS (
             SELECT 
@@ -646,13 +645,16 @@ def dashboard(f: Filters = Depends(filters), user=Depends(current_user)):
             JOIN session_questions sq ON sq.id = fr.session_question_id
             JOIN class_sessions cs ON cs.id = fr.session_id
             JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
+            JOIN year_specialization_semesters yss ON yss.id = bs.year_specialization_semester_id
             JOIN subjects su ON su.id = cs.subject_id
             WHERE sq.question_type = 'rating'
               AND fr.response_text ~ '^[1-5](\\.[0-9]+)?$'
               AND su.name !~* 'eval'
               AND bs.batch_id IN (SELECT id FROM scoped_batches)
+              AND (%(semester_id)s::uuid IS NULL OR yss.semester_id = %(semester_id)s)
               AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s::uuid)
-              AND cs.scheduled_start >= (SELECT max(scheduled_start) - INTERVAL '90 days' FROM class_sessions)
+              AND cs.scheduled_start >= %(from_date)s::date 
+              AND cs.scheduled_start < %(to_date)s::date + 1
             GROUP BY fr.student_id, fr.session_id, cs.scheduled_start
         )
         SELECT 
@@ -660,38 +662,18 @@ def dashboard(f: Filters = Depends(filters), user=Depends(current_user)):
             count(*) AS total_submissions,
             count(DISTINCT student_id) AS student_count
         FROM student_session_feedback
-        """,
-        p,
-    )
+    """
+    feedback_stats = one(feedback_sql, p)
 
-    prior_feedback = one(
-        f"""
-        WITH scoped_batches AS ({BATCH_SCOPE}),
-        student_session_feedback AS (
-            SELECT 
-                fr.student_id,
-                fr.session_id,
-                cs.scheduled_start,
-                avg(fr.response_text::numeric) AS student_avg_rating
-            FROM session_feedback_responses fr
-            JOIN session_questions sq ON sq.id = fr.session_question_id
-            JOIN class_sessions cs ON cs.id = fr.session_id
-            JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
-            JOIN subjects su ON su.id = cs.subject_id
-            WHERE sq.question_type = 'rating'
-              AND fr.response_text ~ '^[1-5](\\.[0-9]+)?$'
-              AND su.name !~* 'eval'
-              AND bs.batch_id IN (SELECT id FROM scoped_batches)
-              AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s::uuid)
-              AND cs.scheduled_start < (SELECT max(scheduled_start) - INTERVAL '90 days' FROM class_sessions)
-              AND cs.scheduled_start >= (SELECT max(scheduled_start) - INTERVAL '180 days' FROM class_sessions)
-            GROUP BY fr.student_id, fr.session_id, cs.scheduled_start
+    p_prev = params(
+        f.model_copy(
+            update={
+                "from_date": f.from_date - timedelta(days=length),
+                "to_date": f.from_date - timedelta(days=1),
+            }
         )
-        SELECT round(avg(student_avg_rating), 2) AS prior_avg_rating
-        FROM student_session_feedback
-        """,
-        p,
-    )
+    ) | metric_settings()
+    prior_feedback = one(feedback_sql, p_prev)
 
     feedback_avg = (
         float(feedback_stats["avg_rating"])
@@ -699,8 +681,8 @@ def dashboard(f: Filters = Depends(filters), user=Depends(current_user)):
         else None
     )
     prior_avg = (
-        float(prior_feedback["prior_avg_rating"])
-        if prior_feedback and prior_feedback.get("prior_avg_rating") is not None
+        float(prior_feedback["avg_rating"])
+        if prior_feedback and prior_feedback.get("avg_rating") is not None
         else None
     )
     feedback_delta = (
@@ -736,7 +718,7 @@ def dashboard(f: Filters = Depends(filters), user=Depends(current_user)):
             "Institute-Wide Mentor Feedback",
             feedback_avg,
             "mentors",
-            "Mean of student-session average feedback ratings across all mentors and classes over the last 3 months (90 days). Counts total student session feedback submissions and distinct participating students.",
+            "Mean of student-session average feedback ratings across all mentors and classes in the selected period. Counts total student session feedback submissions and distinct participating students.",
         ),
         (
             "tasks",
@@ -787,7 +769,7 @@ def dashboard(f: Filters = Depends(filters), user=Depends(current_user)):
         elif key == "mentor_feedback":
             total_subs = feedback_stats["total_submissions"] if feedback_stats else 0
             stu_count = feedback_stats["student_count"] if feedback_stats else 0
-            extra_kpi["evidence"] = f"{total_subs:,} ratings · {stu_count:,} students"
+            extra_kpi["evidence"] = f"{total_subs:,} ratings · {stu_count:,} students" if total_subs > 0 else "No ratings in selected period"
         result.append(extra_kpi)
     from .chart_data import ChartContext
 

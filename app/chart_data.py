@@ -673,7 +673,7 @@ class ChartContext:
                       ))
                     GROUP BY sb.student_id
                 ),
-                daily_eligible AS (
+                daily_active_base AS (
                     SELECT 
                         cd.date,
                         count(DISTINCT am.student_id) AS total_students
@@ -683,10 +683,12 @@ class ChartContext:
                     WHERE ij.intern_join_date IS NULL OR ij.intern_join_date >= cd.date
                     GROUP BY cd.date
                 ),
-                daily_absent AS (
+                student_day_records AS (
                     SELECT 
                         cs.scheduled_start::date AS date,
-                        count(DISTINCT ar.student_id) AS absent_students
+                        ar.student_id,
+                        count(ar.id) FILTER (WHERE ar.status IN ('present', 'late', 'absent')) AS eligible_classes,
+                        count(ar.id) FILTER (WHERE ar.status = 'present' OR (%(late_counts_present)s AND ar.status = 'late')) AS present_classes
                     FROM attendance_records ar
                     JOIN class_sessions cs ON cs.id = ar.session_id
                     JOIN batch_semesters bs ON bs.id = cs.batch_semester_id
@@ -695,7 +697,6 @@ class ChartContext:
                     JOIN academic_memberships am ON am.student_id = ar.student_id AND am.start_date <= cs.scheduled_start::date
                     LEFT JOIN intern_joins ij ON ij.student_id = ar.student_id
                     WHERE cs.counts_for_attendance
-                      AND (ar.status = 'absent' OR (NOT %(late_counts_present)s AND ar.status = 'late'))
                       AND cs.scheduled_start >= (SELECT start_date FROM academic_bounds) 
                       AND cs.scheduled_start < (SELECT end_date + 1 FROM academic_bounds)
                       AND bs.batch_id IN (SELECT id FROM scoped_batches)
@@ -703,23 +704,33 @@ class ChartContext:
                       AND (%(mentor_id)s::uuid IS NULL OR cs.faculty_id = %(mentor_id)s)
                       AND (ij.intern_join_date IS NULL OR ij.intern_join_date >= cs.scheduled_start::date)
                       AND su.name !~* 'eval'
-                    GROUP BY cs.scheduled_start::date
+                    GROUP BY cs.scheduled_start::date, ar.student_id
+                ),
+                daily_marked AS (
+                    SELECT 
+                        date,
+                        count(DISTINCT student_id) AS scheduled_students,
+                        count(DISTINCT student_id) FILTER (WHERE present_classes = eligible_classes AND eligible_classes > 0) AS present_students,
+                        count(DISTINCT student_id) FILTER (WHERE present_classes < eligible_classes OR eligible_classes = 0) AS absent_students
+                    FROM student_day_records
+                    GROUP BY date
                 )
                 SELECT 
                     cd.date,
                     extract(isodow from cd.date) IN (6, 7) AS is_weekend,
                     coalesce(rs.attendance_record_count, 0) > 0 AS has_attendance,
-                    coalesce(de.total_students, 0) AS total_students,
-                    coalesce(da.absent_students, 0) AS absent_students,
                     CASE 
                         WHEN coalesce(rs.attendance_record_count, 0) > 0 
-                        THEN greatest(0, coalesce(de.total_students, 0) - coalesce(da.absent_students, 0))
-                        ELSE 0 
-                    END AS present_students
+                        THEN coalesce(dm.scheduled_students, 0)
+                        ELSE coalesce(dab.total_students, 0)
+                    END AS total_students,
+                    coalesce(dm.absent_students, 0) AS absent_students,
+                    coalesce(dm.present_students, 0) AS present_students,
+                    coalesce(dab.total_students, 0) AS base_enrolled
                 FROM calendar_dates cd
                 LEFT JOIN recorded_sessions rs ON rs.date = cd.date
-                LEFT JOIN daily_eligible de ON de.date = cd.date
-                LEFT JOIN daily_absent da ON da.date = cd.date
+                LEFT JOIN daily_active_base dab ON dab.date = cd.date
+                LEFT JOIN daily_marked dm ON dm.date = cd.date
                 ORDER BY cd.date"""
                 p = params(f) | metric_settings()
                 raw_rows = query(sql, p)
@@ -734,6 +745,7 @@ class ChartContext:
                     has_att = bool(r["has_attendance"])
                     is_wknd = bool(r["is_weekend"])
                     tot_cnt = int(r["total_students"] or 0)
+                    base_cnt = int(r["base_enrolled"] or 0)
                     absent_cnt = int(r["absent_students"] or 0) if has_att else 0
                     present_cnt = int(r["present_students"] or 0) if has_att else 0
                     if has_att:
@@ -741,8 +753,8 @@ class ChartContext:
                         total_present_sum += present_cnt
                         total_eligible_sum += tot_cnt
                         recorded_days_count += 1
-                    if tot_cnt > 0:
-                        latest_active = tot_cnt
+                    if base_cnt > 0:
+                        latest_active = base_cnt
 
                     status = "recorded" if has_att else ("weekend" if is_wknd else "no_attendance")
                     formatted_rows.append(
