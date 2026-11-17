@@ -8,6 +8,12 @@ from .records import source_query
 router = APIRouter(prefix="/calendar", tags=["Scheduling"])
 
 
+EXCLUDED_EVENT_TITLES = (
+    "Claude Campus Ambassador Program",
+    "Great Indian AI Internship Challenge",
+)
+
+
 @router.get("")
 def events(f: Filters = Depends(filters), user=Depends(current_user)):
     sources = [
@@ -29,8 +35,27 @@ def events(f: Filters = Depends(filters), user=Depends(current_user)):
             if exc.status_code == 409:
                 continue
             raise
+
+        if name == "sessions":
+            extra_cols = "x.batch, x.mentor, x.subject, sm.name AS semester, x.status"
+        elif name == "examinations":
+            extra_cols = "x.batch, NULL::text AS mentor, x.subject, sm.name AS semester, x.status"
+        else:
+            extra_cols = "NULL::text AS batch, NULL::text AS mentor, NULL::text AS subject, sm.name AS semester, NULL::text AS status"
+
         rows = query(
-            f"SELECT id::text,title,date AS start,coalesce({end_expression},date) AS end FROM ({sql}) x WHERE date<%(to_date)s::date+1 AND coalesce({end_expression},date)>=%(from_date)s::date ORDER BY date,id LIMIT 1001",
+            f"""SELECT x.id::text, x.title, x.date AS start, coalesce({end_expression}, x.date) AS end,
+                       {extra_cols}
+                FROM ({sql}) x
+                LEFT JOIN semesters sm ON sm.id = x.semester_id
+                WHERE x.date < %(to_date)s::date + 1
+                  AND coalesce({end_expression}, x.date) >= %(from_date)s::date
+                  AND NOT (
+                    coalesce(x.title, '') ILIKE '%%Claude Campus Ambassador Program%%'
+                    OR coalesce(x.title, '') ILIKE '%%Great Indian AI Internship Challenge%%'
+                  )
+                ORDER BY x.date, x.id
+                LIMIT 1001""",
             p,
         )
         if len(rows) > 1000:

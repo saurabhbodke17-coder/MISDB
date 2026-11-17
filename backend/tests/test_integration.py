@@ -370,7 +370,7 @@ def test_overall_daily_attendance_chart(client):
     assert c["id"] == "attendance-overall"
     assert c["provider"] == "attendance.overall_daily"
     assert c["status"] == "available"
-    assert c["series"] == ["absent_students"]
+    assert c["series"] == ["present_students"]
     assert len(c["rows"]) > 0
     assert "summary" in c
     assert "avg_absent" in c["summary"]

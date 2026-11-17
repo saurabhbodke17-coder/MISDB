@@ -761,7 +761,7 @@ class ChartContext:
                         {
                             "name": str(r["date"]),
                             "date": str(r["date"]),
-                            "value": absent_cnt,
+                            "value": present_cnt,
                             "absent_students": absent_cnt,
                             "present_students": present_cnt,
                             "total_students": tot_cnt,
@@ -777,9 +777,9 @@ class ChartContext:
 
                 return dataset(
                     formatted_rows,
-                    series=["absent_students"],
+                    series=["present_students"],
                     unit="",
-                    note="Daily count of absent students across the institution. Continuous calendar timeline displays all days including weekends and non-instructional days; days without recorded attendance are highlighted. Semester 1 students are included from their batch start date (August 31, 2026). Active internship students are excluded from the attendance pool from the day after joining.",
+                    note="Daily count of present students across the institution. Continuous calendar timeline displays all days including weekends and non-instructional days; days without recorded attendance are highlighted. Semester 1 students are included from their batch start date (August 31, 2026). Active internship students are excluded from the attendance pool from the day after joining.",
                     summary={
                         "avg_absent": avg_absent,
                         "avg_present": avg_present,
