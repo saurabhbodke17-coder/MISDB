@@ -123,6 +123,170 @@ def serialize_val(val):
     return val
 
 
+def fetch_subject_cards(
+    conn,
+    where_clause: str,
+    params: dict[str, Any],
+    sem_filter: str | None = None,
+    batch_filter: str | None = None,
+    clean_subject: str | None = None,
+    clean_search: str | None = None,
+) -> list[dict[str, Any]]:
+    # 1. Attempt reading from internal_data.cwa via run_readonly_query
+    cwa_rows = []
+    where_cwa = ["maximum_marks > 0"]
+    if sem_filter:
+        where_cwa.append(f"semester ILIKE '%%{sem_filter}%%'")
+    if batch_filter:
+        clean_batch_esc = batch_filter.replace("'", "''")
+        where_cwa.append(f"batch ILIKE '%%{clean_batch_esc}%%'")
+    if clean_subject:
+        clean_subj_esc = clean_subject.replace("'", "''")
+        where_cwa.append(f"subject_name ILIKE '%%{clean_subj_esc}%%'")
+    where_cwa_str = " AND ".join(where_cwa)
+
+    cwa_sql = f"""
+        SELECT 
+            semester,
+            subject_name,
+            string_agg(DISTINCT batch, ', ') as batches,
+            count(DISTINCT email) as student_count,
+            round(avg(CASE WHEN exam_type = 'Internal Evaluation' THEN marks_scored * 100.0 / NULLIF(maximum_marks, 0) END), 1) as eval_avg,
+            round(avg(CASE WHEN exam_type = 'Mid-Sem' THEN marks_scored * 100.0 / NULLIF(maximum_marks, 0) END), 1) as midsem_avg,
+            round(avg(CASE WHEN exam_type = 'End-Sem' THEN marks_scored * 100.0 / NULLIF(maximum_marks, 0) END), 1) as endsem_avg
+        FROM internal_data.cwa
+        WHERE {where_cwa_str}
+        GROUP BY semester, subject_name
+        ORDER BY semester, subject_name
+    """
+    try:
+        res = conn.execute("SELECT public.run_readonly_query(%s)", (cwa_sql,)).fetchall()
+        cwa_rows = res[0]["run_readonly_query"] if res and res[0] and res[0]["run_readonly_query"] else []
+    except Exception:
+        cwa_rows = []
+
+    # 2. Viva Voce metrics from internal_data.exams_latest
+    exams_sql = f"""
+        SELECT 
+            subject_name,
+            semester,
+            round(avg(CASE WHEN exam_type = 'Viva' THEN (marks_scored::numeric / maximum_marks::numeric) * 100 END), 1) as viva_avg,
+            round(avg(CASE WHEN exam_type IN ('Evaluations', 'Evaluation') THEN (marks_scored::numeric / maximum_marks::numeric) * 100 END), 1) as raw_eval_avg,
+            count(CASE WHEN exam_type = 'Viva' THEN 1 END) as viva_count
+        FROM internal_data.exams_latest
+        WHERE {where_clause}
+        GROUP BY subject_name, semester
+    """
+    try:
+        exams_rows = conn.execute(exams_sql, params).fetchall()
+        exams_map = {(r["semester"], r["subject_name"]): r for r in exams_rows}
+    except Exception:
+        exams_map = {}
+
+    cards = []
+    seen_keys = set()
+
+    for c in cwa_rows:
+        sem = c.get("semester") or ""
+        sn = c.get("subject_name") or ""
+        key = (sem, sn)
+        seen_keys.add(key)
+
+        ex = exams_map.get(key) or {}
+        viva = ex.get("viva_avg")
+
+        e_avg = float(c["eval_avg"]) if c.get("eval_avg") is not None else None
+        m_avg = float(c["midsem_avg"]) if c.get("midsem_avg") is not None else None
+        end_avg = float(c["endsem_avg"]) if c.get("endsem_avg") is not None else None
+        v_avg = float(viva) if viva is not None else None
+
+        # Determine composite overall score & formula
+        if m_avg is not None and end_avg is not None and e_avg is not None:
+            overall = round((e_avg * 0.25) + (m_avg * 0.25) + (end_avg * 0.50), 1)
+            formula = "(0.25 × Eval) + (0.25 × Mid-Sem) + (0.50 × End-Sem)"
+        elif end_avg is not None and e_avg is not None:
+            overall = round((e_avg * 0.35) + (end_avg * 0.65), 1)
+            formula = "(0.35 × Eval) + (0.65 × End-Sem)"
+        else:
+            avail = [x for x in [e_avg, m_avg, end_avg, v_avg] if x is not None]
+            overall = round(sum(avail) / len(avail), 1) if avail else 0.0
+            formula = "Simple Average of Available Assessments"
+
+        tier = "Distinction" if overall >= 75 else "First Class" if overall >= 60 else "Pass" if overall >= 40 else "At Risk"
+
+        red_flags = []
+        if v_avg is not None and v_avg < 30.0:
+            red_flags.append(f"Severe Oral Defense Lag: Viva average is {v_avg}% (lagging behind {end_avg or m_avg}% written exam score)")
+        elif v_avg is not None and v_avg < 40.0:
+            red_flags.append(f"Oral Defense Gap: Viva average is {v_avg}%")
+        if m_avg is not None and end_avg is not None and (end_avg - m_avg) > 20.0:
+            red_flags.append(f"Mid-Sem Volatility: Students scored {m_avg}% in Mid-Sem before rebounding to {end_avg}% in End-Sem")
+        if v_avg is None:
+            red_flags.append("Viva Voce not scheduled for this semester")
+        if m_avg is None:
+            red_flags.append("Mid-Sem not scheduled for this subject")
+
+        cards.append({
+            "id": f"{sem}-{sn}",
+            "subject_name": sn,
+            "semester": sem,
+            "batches": c.get("batches") or "",
+            "student_count": c.get("student_count") or 0,
+            "eval_avg": e_avg,
+            "viva_avg": v_avg,
+            "midsem_avg": m_avg,
+            "endsem_avg": end_avg,
+            "overall_avg": overall,
+            "tier": tier,
+            "formula": formula,
+            "red_flags": red_flags,
+        })
+
+    # If cwa_rows were not found, fallback to exams_latest subjects
+    if not cwa_rows:
+        for (sem, sn), ex in exams_map.items():
+            if len(sn.strip()) < 3 or (ex.get("raw_eval_avg") is None and ex.get("viva_avg") is None):
+                continue
+            v_avg = float(ex["viva_avg"]) if ex.get("viva_avg") is not None else None
+            e_avg = float(ex["raw_eval_avg"]) if ex.get("raw_eval_avg") is not None else None
+            avail = [x for x in [e_avg, v_avg] if x is not None]
+            overall = round(sum(avail) / len(avail), 1) if avail else 0.0
+            tier = "Distinction" if overall >= 75 else "First Class" if overall >= 60 else "Pass" if overall >= 40 else "At Risk"
+
+            red_flags = []
+            if v_avg is not None and v_avg < 35.0:
+                red_flags.append(f"Oral Defense Lag: Viva average is {v_avg}%")
+            red_flags.append("End-Sem data pending or not scheduled")
+
+            cards.append({
+                "id": f"{sem}-{sn}",
+                "subject_name": sn,
+                "semester": sem,
+                "batches": "Cohort Enrolled",
+                "student_count": ex.get("viva_count") or 0,
+                "eval_avg": e_avg,
+                "viva_avg": v_avg,
+                "midsem_avg": None,
+                "endsem_avg": None,
+                "overall_avg": overall,
+                "tier": tier,
+                "formula": "Internal Evaluations & Viva Average",
+                "red_flags": red_flags,
+            })
+
+    # Secondary text search filtering if provided
+    if clean_search:
+        s_lower = clean_search.lower()
+        cards = [
+            c for c in cards
+            if s_lower in c["subject_name"].lower()
+            or s_lower in c["semester"].lower()
+            or s_lower in c["batches"].lower()
+        ]
+
+    return cards
+
+
 @router.get("/performance")
 def academic_performance(
     f: Filters = Depends(filters),
@@ -350,8 +514,38 @@ def academic_performance(
             params,
         ).fetchall()
 
+        # 9. Unified Subject Cards with Viva, Weekly Eval, Mid-Sem, End-Sem & Red Flags
+        sem_filter = None
+        if f.semester_id:
+            try:
+                sem_row = conn.execute("SELECT number FROM semesters WHERE id = %(sid)s", {"sid": f.semester_id}).fetchone()
+                if sem_row and sem_row[0]:
+                    sem_filter = f"SEM {sem_row[0]}"
+            except Exception:
+                pass
+
+        batch_filter = None
+        if f.batch_id:
+            try:
+                b_row = conn.execute("SELECT name FROM batches WHERE id = %(bid)s", {"bid": f.batch_id}).fetchone()
+                if b_row and b_row[0]:
+                    batch_filter = b_row[0]
+            except Exception:
+                pass
+
+        subject_cards = fetch_subject_cards(
+            conn,
+            where_clause,
+            params,
+            sem_filter=sem_filter,
+            batch_filter=batch_filter,
+            clean_subject=clean_subject,
+            clean_search=clean_search,
+        )
+
         return {
             "kpis": kpis,
+            "subject_cards": subject_cards,
             "charts": {
                 "grade_distribution": grade_distribution,
                 "subject_performance": subject_performance,
