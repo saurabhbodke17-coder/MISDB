@@ -12,7 +12,6 @@ import {
   BarChart3,
   FileText,
   X,
-  AlertTriangle,
   ArrowRight,
   HelpCircle,
 } from 'lucide-react';
@@ -130,8 +129,7 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
   // Subject cards state on Overview tab
   const [cardSemester, setCardSemester] = useState<string>('all');
   const [cardSearch, setCardSearch] = useState<string>('');
-  const [cardSort, setCardSort] = useState<string>('overall_desc');
-  const [cardOnlyFlagged, setCardOnlyFlagged] = useState<boolean>(false);
+  const [cardSort, setCardSort] = useState<string>('name_asc');
 
   // Local state for table search, sub-filters, pagination, and feedback modal
   const [searchTerm, setSearchTerm] = useState('');
@@ -180,12 +178,6 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
     return Array.from(sems).sort();
   }, [subjectCards]);
 
-  const flaggedCardsCount = useMemo(() => {
-    return subjectCards.filter((c) =>
-      c.red_flags.some((f) => f.includes('Severe') || f.includes('Lag') || f.includes('Volatility') || f.includes('Gap'))
-    ).length;
-  }, [subjectCards]);
-
   const filteredCards = useMemo(() => {
     let list = [...subjectCards];
     if (cardSemester !== 'all') {
@@ -200,24 +192,17 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
           c.batches.toLowerCase().includes(term)
       );
     }
-    if (cardOnlyFlagged) {
-      list = list.filter((c) =>
-        c.red_flags.some((f) => f.includes('Severe') || f.includes('Lag') || f.includes('Volatility') || f.includes('Gap'))
-      );
-    }
     list.sort((a, b) => {
-      if (cardSort === 'overall_desc') return b.overall_avg - a.overall_avg;
-      if (cardSort === 'overall_asc') return a.overall_avg - b.overall_avg;
       if (cardSort === 'endsem_desc') return (b.endsem_avg || 0) - (a.endsem_avg || 0);
+      if (cardSort === 'midsem_desc') return (b.midsem_avg || 0) - (a.midsem_avg || 0);
       if (cardSort === 'eval_desc') return (b.eval_avg || 0) - (a.eval_avg || 0);
-      if (cardSort === 'viva_asc') return (a.viva_avg ?? 999) - (b.viva_avg ?? 999);
       if (cardSort === 'viva_desc') return (b.viva_avg ?? -1) - (a.viva_avg ?? -1);
       if (cardSort === 'students_desc') return b.student_count - a.student_count;
       if (cardSort === 'name_asc') return a.subject_name.localeCompare(b.subject_name);
       return 0;
     });
     return list;
-  }, [subjectCards, cardSemester, cardSearch, cardSort, cardOnlyFlagged]);
+  }, [subjectCards, cardSemester, cardSearch, cardSort]);
 
   const getSemesterStyle = (sem: string) => {
     if (sem.includes('1')) return { bg: 'rgba(14, 165, 233, 0.12)', color: '#0284c7', border: 'rgba(14, 165, 233, 0.3)' };
@@ -225,19 +210,6 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
     if (sem.includes('3')) return { bg: 'rgba(168, 85, 247, 0.12)', color: '#a855f7', border: 'rgba(168, 85, 247, 0.3)' };
     if (sem.includes('4')) return { bg: 'rgba(236, 72, 153, 0.12)', color: '#ec4899', border: 'rgba(236, 72, 153, 0.3)' };
     return { bg: 'var(--surface2)', color: 'var(--ink)', border: 'var(--line)' };
-  };
-
-  const getTierStyle = (tier: string) => {
-    switch (tier) {
-      case 'Distinction':
-        return { bg: 'rgba(16, 185, 129, 0.12)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' };
-      case 'First Class':
-        return { bg: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' };
-      case 'Pass':
-        return { bg: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' };
-      default:
-        return { bg: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' };
-    }
   };
 
   // CSV Export
@@ -492,11 +464,11 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
       {effectiveTab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* A. Subject Academic Scorecards Section */}
-          <Card title="Subject Academic Scorecards & Overall Performance">
+          <Card title="Subject Academic Performance">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                 <p style={{ margin: 0, fontSize: '13px', color: 'var(--secondary)' }}>
-                  Subject scorecards with average percentage marks in <strong>Weekly Eval</strong>, <strong>Viva Voce</strong>, <strong>Mid-Sem</strong>, and <strong>End-Sem</strong>, including overall composite score and detected red flags.
+                  Average percentage marks across <strong>Mid-Sem</strong>, <strong>Weekly Eval</strong>, <strong>Viva Voce</strong>, and <strong>End-Sem</strong> examinations.
                 </p>
                 <div style={{ fontSize: '11px', color: 'var(--muted)', background: 'var(--surface2)', padding: '4px 10px', borderRadius: '4px', fontWeight: 500 }}>
                   Showing {filteredCards.length} of {subjectCards.length} Subjects
@@ -548,35 +520,11 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                       </button>
                     );
                   })}
-
-                  {/* Flagged Only Toggle */}
-                  <button
-                    onClick={() => setCardOnlyFlagged(!cardOnlyFlagged)}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      padding: '5px 12px',
-                      borderRadius: '16px',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      border: '1px solid',
-                      background: cardOnlyFlagged ? 'rgba(239, 68, 68, 0.15)' : 'var(--surface)',
-                      color: cardOnlyFlagged ? '#ef4444' : 'var(--secondary)',
-                      borderColor: cardOnlyFlagged ? '#ef4444' : 'var(--line)',
-                      transition: 'all 0.15s ease',
-                    }}
-                    title="Filter to subjects with flagged lag or volatility"
-                  >
-                    <AlertTriangle size={13} color={cardOnlyFlagged ? '#ef4444' : 'var(--muted)'} />
-                    Flags Only ({flaggedCardsCount})
-                  </button>
                 </div>
 
                 {/* Search & Sort Controls */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <div style={{ position: 'relative', width: '200px' }}>
+                  <div style={{ position: 'relative', width: '220px' }}>
                     <Search size={13} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
                     <input
                       type="text"
@@ -608,14 +556,12 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                       color: 'var(--ink)',
                     }}
                   >
-                    <option value="overall_desc">Overall Score (High to Low)</option>
-                    <option value="overall_asc">Overall Score (Low to High)</option>
-                    <option value="endsem_desc">End-Sem (High to Low)</option>
-                    <option value="eval_desc">Weekly Eval (High to Low)</option>
-                    <option value="viva_asc">Viva Score (Lowest / Lagging First)</option>
-                    <option value="viva_desc">Viva Score (High to Low)</option>
-                    <option value="students_desc">Student Count (Highest First)</option>
                     <option value="name_asc">Subject Name (A-Z)</option>
+                    <option value="endsem_desc">End-Sem (High to Low)</option>
+                    <option value="midsem_desc">Mid-Sem (High to Low)</option>
+                    <option value="eval_desc">Weekly Eval (High to Low)</option>
+                    <option value="viva_desc">Viva Voce (High to Low)</option>
+                    <option value="students_desc">Student Count (Highest First)</option>
                   </select>
                 </div>
               </div>
@@ -635,21 +581,18 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                 >
                   {filteredCards.map((card) => {
                     const semStyle = getSemesterStyle(card.semester);
-                    const tierStyle = getTierStyle(card.tier);
-                    const hasSevereLag = card.red_flags.some((f) => f.includes('Severe') || f.includes('Lag'));
 
                     return (
                       <div
                         key={card.id}
                         style={{
                           background: 'var(--surface)',
-                          border: `1px solid ${hasSevereLag ? 'rgba(239, 68, 68, 0.45)' : 'var(--line)'}`,
+                          border: '1px solid var(--line)',
                           borderRadius: '10px',
                           padding: '16px',
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: '12px',
-                          boxShadow: hasSevereLag ? '0 2px 10px rgba(239, 68, 68, 0.08)' : 'none',
+                          gap: '14px',
                           transition: 'all 0.2s ease',
                         }}
                       >
@@ -669,35 +612,21 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                             >
                               {card.subject_name}
                             </h3>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                              <span
-                                style={{
-                                  background: semStyle.bg,
-                                  color: semStyle.color,
-                                  border: `1px solid ${semStyle.border}`,
-                                  fontSize: '10px',
-                                  fontWeight: 700,
-                                  padding: '2px 7px',
-                                  borderRadius: '10px',
-                                  letterSpacing: '0.3px',
-                                }}
-                              >
-                                {card.semester}
-                              </span>
-                              <span
-                                style={{
-                                  background: tierStyle.bg,
-                                  color: tierStyle.color,
-                                  border: `1px solid ${tierStyle.border}`,
-                                  fontSize: '10px',
-                                  fontWeight: 700,
-                                  padding: '2px 7px',
-                                  borderRadius: '10px',
-                                }}
-                              >
-                                {card.tier}
-                              </span>
-                            </div>
+                            <span
+                              style={{
+                                background: semStyle.bg,
+                                color: semStyle.color,
+                                border: `1px solid ${semStyle.border}`,
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: '10px',
+                                letterSpacing: '0.3px',
+                                flexShrink: 0,
+                              }}
+                            >
+                              {card.semester}
+                            </span>
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--muted)', flexWrap: 'wrap' }}>
@@ -708,53 +637,27 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                           </div>
                         </div>
 
-                        {/* Overall Composite Score Bar */}
-                        <div
-                          style={{
-                            background: 'var(--surface2)',
-                            borderRadius: '8px',
-                            padding: '10px 12px',
-                            border: '1px solid var(--line)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '6px',
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '11px', color: 'var(--secondary)', fontWeight: 600 }}>
-                              Composite Overall Score
-                            </span>
-                            <span style={{ fontSize: '16px', fontWeight: 800, color: tierStyle.color }}>
-                              {card.overall_avg}%
-                            </span>
-                          </div>
-                          <div style={{ height: '6px', width: '100%', background: 'var(--line)', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div
-                              style={{
-                                height: '100%',
-                                width: `${Math.min(100, card.overall_avg)}%`,
-                                background: tierStyle.color,
-                                borderRadius: '3px',
-                                transition: 'width 0.3s ease',
-                              }}
-                            />
-                          </div>
-                          <div style={{ fontSize: '10px', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                            <span>Weightage:</span>
-                            <code style={{ fontSize: '10px', background: 'var(--surface)', padding: '1px 5px', borderRadius: '3px', color: 'var(--ink)' }}>
-                              {card.formula}
-                            </code>
-                          </div>
-                        </div>
-
-                        {/* 4 Assessment Pillars Grid */}
+                        {/* 4 Parameters Grid */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-                          {/* 1. Weekly Eval */}
-                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {/* 1. Mid-Sem */}
+                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ fontSize: '10px', color: 'var(--secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.2px' }}>
+                              Mid-Sem
+                            </div>
+                            <div style={{ fontSize: '16px', fontWeight: 700, color: card.midsem_avg !== null ? 'var(--ink)' : 'var(--muted)' }}>
+                              {card.midsem_avg !== null ? `${card.midsem_avg}%` : '—'}
+                            </div>
+                            <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${Math.min(100, card.midsem_avg || 0)}%`, background: '#8b5cf6', borderRadius: '2px' }} />
+                            </div>
+                          </div>
+
+                          {/* 2. Weekly Eval */}
+                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ fontSize: '10px', color: 'var(--secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.2px' }}>
                               Weekly Eval
                             </div>
-                            <div style={{ fontSize: '14px', fontWeight: 700, color: card.eval_avg !== null ? 'var(--ink)' : 'var(--muted)' }}>
+                            <div style={{ fontSize: '16px', fontWeight: 700, color: card.eval_avg !== null ? 'var(--ink)' : 'var(--muted)' }}>
                               {card.eval_avg !== null ? `${card.eval_avg}%` : '—'}
                             </div>
                             <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
@@ -762,51 +665,25 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                             </div>
                           </div>
 
-                          {/* 2. Viva Voce */}
-                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {/* 3. Viva Voce */}
+                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ fontSize: '10px', color: 'var(--secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.2px' }}>
                               Viva Voce
                             </div>
-                            <div
-                              style={{
-                                fontSize: '14px',
-                                fontWeight: 700,
-                                color: card.viva_avg !== null ? (card.viva_avg < 30 ? '#ef4444' : card.viva_avg < 40 ? '#f59e0b' : '#10b981') : 'var(--muted)',
-                              }}
-                            >
-                              {card.viva_avg !== null ? `${card.viva_avg}%` : 'N/A'}
+                            <div style={{ fontSize: '16px', fontWeight: 700, color: card.viva_avg !== null ? 'var(--ink)' : 'var(--muted)' }}>
+                              {card.viva_avg !== null ? `${card.viva_avg}%` : '—'}
                             </div>
                             <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
-                              <div
-                                style={{
-                                  height: '100%',
-                                  width: `${Math.min(100, card.viva_avg || 0)}%`,
-                                  background: (card.viva_avg || 0) < 30 ? '#ef4444' : (card.viva_avg || 0) < 40 ? '#f59e0b' : '#10b981',
-                                  borderRadius: '2px',
-                                }}
-                              />
-                            </div>
-                          </div>
-
-                          {/* 3. Mid-Sem */}
-                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.2px' }}>
-                              Mid-Sem
-                            </div>
-                            <div style={{ fontSize: '14px', fontWeight: 700, color: card.midsem_avg !== null ? 'var(--ink)' : 'var(--muted)' }}>
-                              {card.midsem_avg !== null ? `${card.midsem_avg}%` : 'N/A'}
-                            </div>
-                            <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: `${Math.min(100, card.midsem_avg || 0)}%`, background: '#8b5cf6', borderRadius: '2px' }} />
+                              <div style={{ height: '100%', width: `${Math.min(100, card.viva_avg || 0)}%`, background: '#f59e0b', borderRadius: '2px' }} />
                             </div>
                           </div>
 
                           {/* 4. End-Sem */}
-                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ fontSize: '10px', color: 'var(--secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.2px' }}>
                               End-Sem
                             </div>
-                            <div style={{ fontSize: '14px', fontWeight: 700, color: card.endsem_avg !== null ? 'var(--ink)' : 'var(--muted)' }}>
+                            <div style={{ fontSize: '16px', fontWeight: 700, color: card.endsem_avg !== null ? 'var(--ink)' : 'var(--muted)' }}>
                               {card.endsem_avg !== null ? `${card.endsem_avg}%` : '—'}
                             </div>
                             <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
@@ -814,64 +691,6 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                             </div>
                           </div>
                         </div>
-
-                        {/* Red Flags / Alignment Alert Box */}
-                        {card.red_flags.length > 0 ? (
-                          <div
-                            style={{
-                              background: card.red_flags.some((f) => f.includes('Severe') || f.includes('Lag'))
-                                ? 'rgba(239, 68, 68, 0.08)'
-                                : 'rgba(245, 158, 11, 0.08)',
-                              border: `1px solid ${
-                                card.red_flags.some((f) => f.includes('Severe') || f.includes('Lag'))
-                                  ? 'rgba(239, 68, 68, 0.25)'
-                                  : 'rgba(245, 158, 11, 0.25)'
-                              }`,
-                              borderRadius: '6px',
-                              padding: '8px 10px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '4px',
-                            }}
-                          >
-                            {card.red_flags.map((flag, fIdx) => (
-                              <div
-                                key={fIdx}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'flex-start',
-                                  gap: '6px',
-                                  fontSize: '11px',
-                                  color: flag.includes('Severe')
-                                    ? '#ef4444'
-                                    : flag.includes('Lag') || flag.includes('Volatility') || flag.includes('Gap')
-                                    ? '#f59e0b'
-                                    : 'var(--muted)',
-                                }}
-                              >
-                                <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: '1px' }} />
-                                <span>{flag}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div
-                            style={{
-                              background: 'rgba(16, 185, 129, 0.06)',
-                              border: '1px solid rgba(16, 185, 129, 0.2)',
-                              borderRadius: '6px',
-                              padding: '6px 10px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              fontSize: '11px',
-                              color: '#10b981',
-                            }}
-                          >
-                            <CheckCircle2 size={13} />
-                            <span>All assessment pillars balanced</span>
-                          </div>
-                        )}
 
                         {/* Card Action Link */}
                         <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '6px', borderTop: '1px solid var(--line)' }}>
