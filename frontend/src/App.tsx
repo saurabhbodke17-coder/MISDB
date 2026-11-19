@@ -15,6 +15,7 @@ import polarisLogo from './Polaris.png';
 import { AIAssistant } from './AIAssistant';
 import { StudentsAtRiskView } from './StudentsAtRiskView';
 import { ConflictsView } from './ConflictsView';
+import { AcademicPerformanceView } from './AcademicPerformanceView';
 
 declare global {
   interface Window {
@@ -729,17 +730,6 @@ function ModuleView({module,selectedTab,setTab,filters,options,dashboard,openRec
   const isAcademic = ['trends', 'attendance', 'sla', 'mentors', 'assess'].includes(module.id);
   const hideAcademicKpis = module.id === 'attendance' && (tab?.id === 'overall' || tab?.id === 'risk');
 
-  if (module.id === 'academic') {
-    return (
-      <Card title="Student Academic Performance">
-        <Empty
-          title="No academic performance data available"
-          message="We do not currently store academic performance data in the database. No placeholder data, charts, or plots are displayed."
-        />
-      </Card>
-    );
-  }
-
   return <>
     {isAcademic && !hideAcademicKpis && dashboard && <div className="compact-metrics">{dashboard.kpis.filter(k=>['attendance','delivery','completion','score'].includes(k.key)).map(k=><div key={k.key}><span>{k.label}</span><strong>{k.value==null?'—':`${k.value}%`}</strong></div>)}</div>}
     {module.id==='internship'&&internshipSummary.data&&<div className="compact-metrics"><div><span>Active Interns</span><strong>{internshipSummary.data.active_students}</strong></div><div><span>Dropped Interns</span><strong>{internshipSummary.data.dropped_students}</strong></div><div><span>Active Batches</span><strong>{internshipSummary.data.batches}</strong></div><div><span>Scheduled Classes</span><strong>{internshipSummary.data.sessions}</strong></div><div><span>Class Completion Rate</span><strong>{internshipSummary.data.completion_rate==null?'—':`${internshipSummary.data.completion_rate}%`}</strong></div><div><span>On-Time Start Rate</span><strong>{internshipSummary.data.on_time_rate==null?'—':`${internshipSummary.data.on_time_rate}%`}</strong></div></div>}
@@ -773,6 +763,8 @@ function ModuleView({module,selectedTab,setTab,filters,options,dashboard,openRec
       <ConflictsView filters={filters} onOpen={openRecord} setToast={setToast} />
     ) : module.id==='attendance'&&tab?.id==='risk' ? (
       <StudentsAtRiskView filters={filters} onOpen={openRecord} setToast={setToast} />
+    ) : module.id==='academic' ? (
+      <AcademicPerformanceView filters={filters} activeTab={tab?.id || 'overview'} onOpen={openRecord} setToast={setToast} />
     ) : (
       <>
         {module.id==='attendance'&&['daily','weekly'].includes(tab?.id||'')&&<div className="chart-controls"><label>Attendance series <select value={breakdown} onChange={e=>setBreakdown(e.target.value)}><option value="institution">Institution-wide</option><option value="batch">By batch</option></select></label></div>}
