@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Award,
@@ -10,9 +10,11 @@ import {
   ChevronLeft,
   ChevronRight,
   BarChart3,
-  HelpCircle,
   FileText,
   X,
+  AlertTriangle,
+  ArrowRight,
+  HelpCircle,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -29,6 +31,22 @@ import { api, queryString } from './api';
 import type { Filters, Row } from './api';
 import { Card, Loading, ErrorState, Badge } from './components';
 
+export interface SubjectCard {
+  id: string;
+  subject_name: string;
+  semester: string;
+  batches: string;
+  student_count: number;
+  eval_avg: number | null;
+  viva_avg: number | null;
+  midsem_avg: number | null;
+  endsem_avg: number | null;
+  overall_avg: number;
+  tier: 'Distinction' | 'First Class' | 'Pass' | 'At Risk';
+  formula: string;
+  red_flags: string[];
+}
+
 export interface AcademicPerformanceApiResponse {
   kpis: {
     total_submissions: number;
@@ -39,6 +57,7 @@ export interface AcademicPerformanceApiResponse {
     pass_rate: number;
     distinction_rate: number;
   };
+  subject_cards?: SubjectCard[];
   charts: {
     grade_distribution: { name: string; count: number; percentage: number }[];
     subject_performance: {
@@ -100,6 +119,20 @@ interface AcademicPerformanceViewProps {
 }
 
 export function AcademicPerformanceView({ filters, activeTab = 'overview', setToast }: AcademicPerformanceViewProps) {
+  // Local state for internal tab switching
+  const [localTab, setLocalTab] = useState<string | null>(null);
+  const effectiveTab = localTab || activeTab;
+
+  useEffect(() => {
+    setLocalTab(null);
+  }, [activeTab]);
+
+  // Subject cards state on Overview tab
+  const [cardSemester, setCardSemester] = useState<string>('all');
+  const [cardSearch, setCardSearch] = useState<string>('');
+  const [cardSort, setCardSort] = useState<string>('overall_desc');
+  const [cardOnlyFlagged, setCardOnlyFlagged] = useState<boolean>(false);
+
   // Local state for table search, sub-filters, pagination, and feedback modal
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedExamType, setSelectedExamType] = useState('all');
@@ -137,6 +170,75 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
   const charts = data?.charts;
   const records = data?.records || [];
   const pagination = data?.pagination;
+  const subjectCards = data?.subject_cards || [];
+
+  const availableSemesters = useMemo(() => {
+    const sems = new Set<string>();
+    subjectCards.forEach((c) => {
+      if (c.semester) sems.add(c.semester);
+    });
+    return Array.from(sems).sort();
+  }, [subjectCards]);
+
+  const flaggedCardsCount = useMemo(() => {
+    return subjectCards.filter((c) =>
+      c.red_flags.some((f) => f.includes('Severe') || f.includes('Lag') || f.includes('Volatility') || f.includes('Gap'))
+    ).length;
+  }, [subjectCards]);
+
+  const filteredCards = useMemo(() => {
+    let list = [...subjectCards];
+    if (cardSemester !== 'all') {
+      list = list.filter((c) => c.semester.toUpperCase() === cardSemester.toUpperCase());
+    }
+    if (cardSearch.trim()) {
+      const term = cardSearch.toLowerCase().trim();
+      list = list.filter(
+        (c) =>
+          c.subject_name.toLowerCase().includes(term) ||
+          c.semester.toLowerCase().includes(term) ||
+          c.batches.toLowerCase().includes(term)
+      );
+    }
+    if (cardOnlyFlagged) {
+      list = list.filter((c) =>
+        c.red_flags.some((f) => f.includes('Severe') || f.includes('Lag') || f.includes('Volatility') || f.includes('Gap'))
+      );
+    }
+    list.sort((a, b) => {
+      if (cardSort === 'overall_desc') return b.overall_avg - a.overall_avg;
+      if (cardSort === 'overall_asc') return a.overall_avg - b.overall_avg;
+      if (cardSort === 'endsem_desc') return (b.endsem_avg || 0) - (a.endsem_avg || 0);
+      if (cardSort === 'eval_desc') return (b.eval_avg || 0) - (a.eval_avg || 0);
+      if (cardSort === 'viva_asc') return (a.viva_avg ?? 999) - (b.viva_avg ?? 999);
+      if (cardSort === 'viva_desc') return (b.viva_avg ?? -1) - (a.viva_avg ?? -1);
+      if (cardSort === 'students_desc') return b.student_count - a.student_count;
+      if (cardSort === 'name_asc') return a.subject_name.localeCompare(b.subject_name);
+      return 0;
+    });
+    return list;
+  }, [subjectCards, cardSemester, cardSearch, cardSort, cardOnlyFlagged]);
+
+  const getSemesterStyle = (sem: string) => {
+    if (sem.includes('1')) return { bg: 'rgba(14, 165, 233, 0.12)', color: '#0284c7', border: 'rgba(14, 165, 233, 0.3)' };
+    if (sem.includes('2')) return { bg: 'rgba(99, 102, 241, 0.12)', color: '#6366f1', border: 'rgba(99, 102, 241, 0.3)' };
+    if (sem.includes('3')) return { bg: 'rgba(168, 85, 247, 0.12)', color: '#a855f7', border: 'rgba(168, 85, 247, 0.3)' };
+    if (sem.includes('4')) return { bg: 'rgba(236, 72, 153, 0.12)', color: '#ec4899', border: 'rgba(236, 72, 153, 0.3)' };
+    return { bg: 'var(--surface2)', color: 'var(--ink)', border: 'var(--line)' };
+  };
+
+  const getTierStyle = (tier: string) => {
+    switch (tier) {
+      case 'Distinction':
+        return { bg: 'rgba(16, 185, 129, 0.12)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' };
+      case 'First Class':
+        return { bg: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' };
+      case 'Pass':
+        return { bg: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' };
+      default:
+        return { bg: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' };
+    }
+  };
 
   // CSV Export
   const handleExportCSV = () => {
@@ -386,82 +488,498 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
         </div>
       </div>
 
-      {/* 3. Main Views depending on activeTab */}
-      {activeTab === 'overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '16px' }}>
-          {/* Grade Distribution Bar Chart */}
-          <Card title="Cohort Grade & Performance Distribution">
-            <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--secondary)' }}>
-              Breakdown of student submissions across performance tiers.
-            </p>
-            <div style={{ height: 260, width: '100%' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={charts?.grade_distribution || []} margin={{ top: 10, right: 20, left: 0, bottom: 25 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--secondary)' }} interval={0} angle={-10} textAnchor="end" />
-                  <YAxis unit="%" tick={{ fontSize: 11, fill: 'var(--secondary)' }} domain={[0, 100]} />
-                  <Tooltip
-                    contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '6px', fontSize: '12px' }}
-                    formatter={(val, _name, item) => [`${val}% (${(item.payload.count || 0).toLocaleString()} submissions)`, 'Share']}
-                  />
-                  <Bar dataKey="percentage" radius={[4, 4, 0, 0]}>
-                    {(charts?.grade_distribution || []).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={tierColors[entry.name] || '#3b82f6'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            {/* Grade summary pill cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginTop: '12px' }}>
-              {(charts?.grade_distribution || []).map((tier, idx) => (
-                <div key={idx} style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '8px 10px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--secondary)', marginBottom: '2px' }}>{tier.name.split(' ')[0]}</div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: tierColors[tier.name] || 'var(--ink)' }}>{tier.percentage}%</div>
-                  <div style={{ fontSize: '10px', color: 'var(--muted)' }}>{(tier.count || 0).toLocaleString()}</div>
+      {/* 3. Main Views depending on activeTab / effectiveTab */}
+      {effectiveTab === 'overview' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* A. Subject Academic Scorecards Section */}
+          <Card title="Subject Academic Scorecards & Overall Performance">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--secondary)' }}>
+                  Subject scorecards with average percentage marks in <strong>Weekly Eval</strong>, <strong>Viva Voce</strong>, <strong>Mid-Sem</strong>, and <strong>End-Sem</strong>, including overall composite score and detected red flags.
+                </p>
+                <div style={{ fontSize: '11px', color: 'var(--muted)', background: 'var(--surface2)', padding: '4px 10px', borderRadius: '4px', fontWeight: 500 }}>
+                  Showing {filteredCards.length} of {subjectCards.length} Subjects
                 </div>
-              ))}
+              </div>
+
+              {/* Filter Controls Row */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', justifyContent: 'space-between' }}>
+                {/* Semester Pills */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setCardSemester('all')}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '16px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: '1px solid',
+                      background: cardSemester === 'all' ? 'var(--accent)' : 'var(--surface)',
+                      color: cardSemester === 'all' ? '#ffffff' : 'var(--ink)',
+                      borderColor: cardSemester === 'all' ? 'var(--accent)' : 'var(--line)',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    All ({subjectCards.length})
+                  </button>
+                  {availableSemesters.map((sem) => {
+                    const count = subjectCards.filter((c) => c.semester === sem).length;
+                    const isSel = cardSemester === sem;
+                    return (
+                      <button
+                        key={sem}
+                        onClick={() => setCardSemester(sem)}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '16px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          border: '1px solid',
+                          background: isSel ? 'var(--accent)' : 'var(--surface)',
+                          color: isSel ? '#ffffff' : 'var(--ink)',
+                          borderColor: isSel ? 'var(--accent)' : 'var(--line)',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        {sem} ({count})
+                      </button>
+                    );
+                  })}
+
+                  {/* Flagged Only Toggle */}
+                  <button
+                    onClick={() => setCardOnlyFlagged(!cardOnlyFlagged)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '5px 12px',
+                      borderRadius: '16px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: '1px solid',
+                      background: cardOnlyFlagged ? 'rgba(239, 68, 68, 0.15)' : 'var(--surface)',
+                      color: cardOnlyFlagged ? '#ef4444' : 'var(--secondary)',
+                      borderColor: cardOnlyFlagged ? '#ef4444' : 'var(--line)',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title="Filter to subjects with flagged lag or volatility"
+                  >
+                    <AlertTriangle size={13} color={cardOnlyFlagged ? '#ef4444' : 'var(--muted)'} />
+                    Flags Only ({flaggedCardsCount})
+                  </button>
+                </div>
+
+                {/* Search & Sort Controls */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <div style={{ position: 'relative', width: '200px' }}>
+                    <Search size={13} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+                    <input
+                      type="text"
+                      placeholder="Search subject..."
+                      value={cardSearch}
+                      onChange={(e) => setCardSearch(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px 6px 26px',
+                        fontSize: '12px',
+                        background: 'var(--surface)',
+                        border: '1px solid var(--line)',
+                        borderRadius: '6px',
+                        color: 'var(--ink)',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+
+                  <select
+                    value={cardSort}
+                    onChange={(e) => setCardSort(e.target.value)}
+                    style={{
+                      padding: '6px 10px',
+                      fontSize: '12px',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '6px',
+                      color: 'var(--ink)',
+                    }}
+                  >
+                    <option value="overall_desc">Overall Score (High to Low)</option>
+                    <option value="overall_asc">Overall Score (Low to High)</option>
+                    <option value="endsem_desc">End-Sem (High to Low)</option>
+                    <option value="eval_desc">Weekly Eval (High to Low)</option>
+                    <option value="viva_asc">Viva Score (Lowest / Lagging First)</option>
+                    <option value="viva_desc">Viva Score (High to Low)</option>
+                    <option value="students_desc">Student Count (Highest First)</option>
+                    <option value="name_asc">Subject Name (A-Z)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Subject Cards Grid */}
+              {filteredCards.length === 0 ? (
+                <div style={{ padding: '36px', textAlign: 'center', color: 'var(--muted)', background: 'var(--surface2)', borderRadius: '8px' }}>
+                  No subject scorecards match the current filter criteria.
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                    gap: '16px',
+                  }}
+                >
+                  {filteredCards.map((card) => {
+                    const semStyle = getSemesterStyle(card.semester);
+                    const tierStyle = getTierStyle(card.tier);
+                    const hasSevereLag = card.red_flags.some((f) => f.includes('Severe') || f.includes('Lag'));
+
+                    return (
+                      <div
+                        key={card.id}
+                        style={{
+                          background: 'var(--surface)',
+                          border: `1px solid ${hasSevereLag ? 'rgba(239, 68, 68, 0.45)' : 'var(--line)'}`,
+                          borderRadius: '10px',
+                          padding: '16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px',
+                          boxShadow: hasSevereLag ? '0 2px 10px rgba(239, 68, 68, 0.08)' : 'none',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        {/* Top Header */}
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
+                            <h3
+                              style={{
+                                margin: 0,
+                                fontSize: '14px',
+                                fontWeight: 700,
+                                color: 'var(--ink)',
+                                lineHeight: '1.3',
+                                flex: 1,
+                              }}
+                              title={card.subject_name}
+                            >
+                              {card.subject_name}
+                            </h3>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                              <span
+                                style={{
+                                  background: semStyle.bg,
+                                  color: semStyle.color,
+                                  border: `1px solid ${semStyle.border}`,
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '2px 7px',
+                                  borderRadius: '10px',
+                                  letterSpacing: '0.3px',
+                                }}
+                              >
+                                {card.semester}
+                              </span>
+                              <span
+                                style={{
+                                  background: tierStyle.bg,
+                                  color: tierStyle.color,
+                                  border: `1px solid ${tierStyle.border}`,
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '2px 7px',
+                                  borderRadius: '10px',
+                                }}
+                              >
+                                {card.tier}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--muted)', flexWrap: 'wrap' }}>
+                            <Users size={12} />
+                            <span>{card.student_count} Students Enrolled</span>
+                            <span>•</span>
+                            <span title={card.batches}>Batches: {card.batches || 'Pioneer'}</span>
+                          </div>
+                        </div>
+
+                        {/* Overall Composite Score Bar */}
+                        <div
+                          style={{
+                            background: 'var(--surface2)',
+                            borderRadius: '8px',
+                            padding: '10px 12px',
+                            border: '1px solid var(--line)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '6px',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--secondary)', fontWeight: 600 }}>
+                              Composite Overall Score
+                            </span>
+                            <span style={{ fontSize: '16px', fontWeight: 800, color: tierStyle.color }}>
+                              {card.overall_avg}%
+                            </span>
+                          </div>
+                          <div style={{ height: '6px', width: '100%', background: 'var(--line)', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div
+                              style={{
+                                height: '100%',
+                                width: `${Math.min(100, card.overall_avg)}%`,
+                                background: tierStyle.color,
+                                borderRadius: '3px',
+                                transition: 'width 0.3s ease',
+                              }}
+                            />
+                          </div>
+                          <div style={{ fontSize: '10px', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                            <span>Weightage:</span>
+                            <code style={{ fontSize: '10px', background: 'var(--surface)', padding: '1px 5px', borderRadius: '3px', color: 'var(--ink)' }}>
+                              {card.formula}
+                            </code>
+                          </div>
+                        </div>
+
+                        {/* 4 Assessment Pillars Grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                          {/* 1. Weekly Eval */}
+                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ fontSize: '10px', color: 'var(--secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.2px' }}>
+                              Weekly Eval
+                            </div>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: card.eval_avg !== null ? 'var(--ink)' : 'var(--muted)' }}>
+                              {card.eval_avg !== null ? `${card.eval_avg}%` : '—'}
+                            </div>
+                            <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${Math.min(100, card.eval_avg || 0)}%`, background: '#3b82f6', borderRadius: '2px' }} />
+                            </div>
+                          </div>
+
+                          {/* 2. Viva Voce */}
+                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ fontSize: '10px', color: 'var(--secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.2px' }}>
+                              Viva Voce
+                            </div>
+                            <div
+                              style={{
+                                fontSize: '14px',
+                                fontWeight: 700,
+                                color: card.viva_avg !== null ? (card.viva_avg < 30 ? '#ef4444' : card.viva_avg < 40 ? '#f59e0b' : '#10b981') : 'var(--muted)',
+                              }}
+                            >
+                              {card.viva_avg !== null ? `${card.viva_avg}%` : 'N/A'}
+                            </div>
+                            <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
+                              <div
+                                style={{
+                                  height: '100%',
+                                  width: `${Math.min(100, card.viva_avg || 0)}%`,
+                                  background: (card.viva_avg || 0) < 30 ? '#ef4444' : (card.viva_avg || 0) < 40 ? '#f59e0b' : '#10b981',
+                                  borderRadius: '2px',
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* 3. Mid-Sem */}
+                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ fontSize: '10px', color: 'var(--secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.2px' }}>
+                              Mid-Sem
+                            </div>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: card.midsem_avg !== null ? 'var(--ink)' : 'var(--muted)' }}>
+                              {card.midsem_avg !== null ? `${card.midsem_avg}%` : 'N/A'}
+                            </div>
+                            <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${Math.min(100, card.midsem_avg || 0)}%`, background: '#8b5cf6', borderRadius: '2px' }} />
+                            </div>
+                          </div>
+
+                          {/* 4. End-Sem */}
+                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ fontSize: '10px', color: 'var(--secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.2px' }}>
+                              End-Sem
+                            </div>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: card.endsem_avg !== null ? 'var(--ink)' : 'var(--muted)' }}>
+                              {card.endsem_avg !== null ? `${card.endsem_avg}%` : '—'}
+                            </div>
+                            <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${Math.min(100, card.endsem_avg || 0)}%`, background: '#10b981', borderRadius: '2px' }} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Red Flags / Alignment Alert Box */}
+                        {card.red_flags.length > 0 ? (
+                          <div
+                            style={{
+                              background: card.red_flags.some((f) => f.includes('Severe') || f.includes('Lag'))
+                                ? 'rgba(239, 68, 68, 0.08)'
+                                : 'rgba(245, 158, 11, 0.08)',
+                              border: `1px solid ${
+                                card.red_flags.some((f) => f.includes('Severe') || f.includes('Lag'))
+                                  ? 'rgba(239, 68, 68, 0.25)'
+                                  : 'rgba(245, 158, 11, 0.25)'
+                              }`,
+                              borderRadius: '6px',
+                              padding: '8px 10px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '4px',
+                            }}
+                          >
+                            {card.red_flags.map((flag, fIdx) => (
+                              <div
+                                key={fIdx}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: '6px',
+                                  fontSize: '11px',
+                                  color: flag.includes('Severe')
+                                    ? '#ef4444'
+                                    : flag.includes('Lag') || flag.includes('Volatility') || flag.includes('Gap')
+                                    ? '#f59e0b'
+                                    : 'var(--muted)',
+                                }}
+                              >
+                                <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: '1px' }} />
+                                <span>{flag}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              background: 'rgba(16, 185, 129, 0.06)',
+                              border: '1px solid rgba(16, 185, 129, 0.2)',
+                              borderRadius: '6px',
+                              padding: '6px 10px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              fontSize: '11px',
+                              color: '#10b981',
+                            }}
+                          >
+                            <CheckCircle2 size={13} />
+                            <span>All assessment pillars balanced</span>
+                          </div>
+                        )}
+
+                        {/* Card Action Link */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '6px', borderTop: '1px solid var(--line)' }}>
+                          <button
+                            onClick={() => {
+                              setSelectedSubject(card.subject_name);
+                              setLocalTab('records');
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--accent)',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 0',
+                            }}
+                          >
+                            View Student Records <ArrowRight size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </Card>
 
-          {/* Assessment Types Breakdown */}
-          <Card title="Performance by Assessment Type">
-            <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--secondary)' }}>
-              Comparison of student performance in continuous evaluations vs vivas vs mid-terms.
-            </p>
-            <div style={{ height: 260, width: '100%' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={charts?.assessment_types || []} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--secondary)' }} />
-                  <YAxis unit="%" tick={{ fontSize: 11, fill: 'var(--secondary)' }} domain={[0, 100]} />
-                  <Tooltip
-                    contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '6px', fontSize: '12px' }}
-                    formatter={(val, _name, item) => [
-                      `${val}% (Submissions: ${(item.payload.count || 0).toLocaleString()}, Attendance: ${item.payload.attendance_rate}%)`,
-                      'Average Score',
-                    ]}
-                  />
-                  <ReferenceLine y={40} stroke="#ef4444" strokeDasharray="3 3" label={{ value: '40% Pass Mark', fill: '#ef4444', fontSize: 10, position: 'right' }} />
-                  <Bar dataKey="avg_score" fill="var(--accent)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, (charts?.assessment_types || []).length)}, 1fr)`, gap: '8px', marginTop: '12px' }}>
-              {(charts?.assessment_types || []).map((t, idx) => (
-                <div key={idx} style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '8px 10px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--secondary)', marginBottom: '2px' }}>{t.name}</div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--accent)' }}>{t.avg_score}%</div>
-                  <div style={{ fontSize: '10px', color: 'var(--muted)' }}>Attendance: {t.attendance_rate}%</div>
-                </div>
-              ))}
-            </div>
-          </Card>
+          {/* B. Macro Grade Distribution and Assessment Types Charts */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '16px' }}>
+            {/* Grade Distribution Bar Chart */}
+            <Card title="Cohort Grade & Performance Distribution">
+              <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--secondary)' }}>
+                Breakdown of student submissions across performance tiers.
+              </p>
+              <div style={{ height: 260, width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={charts?.grade_distribution || []} margin={{ top: 10, right: 20, left: 0, bottom: 25 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--secondary)' }} interval={0} angle={-10} textAnchor="end" />
+                    <YAxis unit="%" tick={{ fontSize: 11, fill: 'var(--secondary)' }} domain={[0, 100]} />
+                    <Tooltip
+                      contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '6px', fontSize: '12px' }}
+                      formatter={(val, _name, item) => [`${val}% (${(item.payload.count || 0).toLocaleString()} submissions)`, 'Share']}
+                    />
+                    <Bar dataKey="percentage" radius={[4, 4, 0, 0]}>
+                      {(charts?.grade_distribution || []).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={tierColors[entry.name] || '#3b82f6'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Grade summary pill cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginTop: '12px' }}>
+                {(charts?.grade_distribution || []).map((tier, idx) => (
+                  <div key={idx} style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '8px 10px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--secondary)', marginBottom: '2px' }}>{tier.name.split(' ')[0]}</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: tierColors[tier.name] || 'var(--ink)' }}>{tier.percentage}%</div>
+                    <div style={{ fontSize: '10px', color: 'var(--muted)' }}>{(tier.count || 0).toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Assessment Types Breakdown */}
+            <Card title="Performance by Assessment Type">
+              <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--secondary)' }}>
+                Comparison of student performance in continuous evaluations vs vivas vs mid-terms.
+              </p>
+              <div style={{ height: 260, width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={charts?.assessment_types || []} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--secondary)' }} />
+                    <YAxis unit="%" tick={{ fontSize: 11, fill: 'var(--secondary)' }} domain={[0, 100]} />
+                    <Tooltip
+                      contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '6px', fontSize: '12px' }}
+                      formatter={(val, _name, item) => [
+                        `${val}% (Submissions: ${(item.payload.count || 0).toLocaleString()}, Attendance: ${item.payload.attendance_rate}%)`,
+                        'Average Score',
+                      ]}
+                    />
+                    <ReferenceLine y={40} stroke="#ef4444" strokeDasharray="3 3" label={{ value: '40% Pass Mark', fill: '#ef4444', fontSize: 10, position: 'right' }} />
+                    <Bar dataKey="avg_score" fill="var(--accent)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, (charts?.assessment_types || []).length)}, 1fr)`, gap: '8px', marginTop: '12px' }}>
+                {(charts?.assessment_types || []).map((t, idx) => (
+                  <div key={idx} style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '8px 10px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--secondary)', marginBottom: '2px' }}>{t.name}</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--accent)' }}>{t.avg_score}%</div>
+                    <div style={{ fontSize: '10px', color: 'var(--muted)' }}>Attendance: {t.attendance_rate}%</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
         </div>
       )}
 
       {/* 4. Subject Analytics Tab */}
-      {activeTab === 'subjects' && (
+      {effectiveTab === 'subjects' && (
         <Card title="Subject-wise Academic Performance">
           <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--secondary)' }}>
             Average marks percentage, student count, and attendance across all evaluated curriculum subjects.
@@ -505,7 +1023,7 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
       )}
 
       {/* 5. Vivas & Batch Comparison Tab */}
-      {activeTab === 'vivas' && (
+      {effectiveTab === 'vivas' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '16px' }}>
           {/* Viva Competencies Card */}
           <Card title="Viva Competency & Skill Breakdown">
@@ -596,8 +1114,46 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
       )}
 
       {/* 6. Student Assessment Records Tab */}
-      {activeTab === 'records' && (
+      {effectiveTab === 'records' && (
         <Card title="Student Assessment Records & Feedback">
+          {localTab === 'records' && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '14px',
+                background: 'rgba(36, 87, 214, 0.08)',
+                border: '1px solid rgba(36, 87, 214, 0.25)',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                flexWrap: 'wrap',
+                gap: '8px',
+              }}
+            >
+              <div style={{ fontSize: '12px', color: 'var(--ink)' }}>
+                Viewing records filtered for subject: <strong>{selectedSubject === 'all' ? 'All Subjects' : selectedSubject}</strong>
+              </div>
+              <button
+                onClick={() => {
+                  setLocalTab(null);
+                  setSelectedSubject('all');
+                }}
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--line)',
+                  borderRadius: '4px',
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  color: 'var(--accent)',
+                }}
+              >
+                ← Return to Overview Scorecards
+              </button>
+            </div>
+          )}
           {/* Interactive Filters Bar */}
           <div
             style={{

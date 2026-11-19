@@ -51,10 +51,23 @@ def test_academic_performance_all(client):
 
     # Validate structure
     assert "kpis" in data
+    assert "subject_cards" in data
     assert "charts" in data
     assert "records" in data
     assert "pagination" in data
     assert "filter_options" in data
+
+    # Validate subject cards
+    assert len(data["subject_cards"]) >= 10
+    card = data["subject_cards"][0]
+    assert "subject_name" in card
+    assert "semester" in card
+    assert "eval_avg" in card
+    assert "midsem_avg" in card
+    assert "endsem_avg" in card
+    assert "overall_avg" in card
+    assert "tier" in card
+    assert "red_flags" in card
 
     # Validate KPI values
     kpis = data["kpis"]
