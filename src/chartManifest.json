@@ -464,8 +464,23 @@
       "tabs": [
         {
           "id": "overview",
-          "label": "Academic performance",
-          "missing": "We do not currently store academic performance data in the database. No placeholder data, charts, or plots are displayed."
+          "label": "Overview & Grades",
+          "source": "exams"
+        },
+        {
+          "id": "subjects",
+          "label": "Subject Analytics",
+          "source": "exams"
+        },
+        {
+          "id": "vivas",
+          "label": "Assessment Types & Vivas",
+          "source": "exams"
+        },
+        {
+          "id": "records",
+          "label": "Student Assessment Records",
+          "source": "exams"
         }
       ],
       "charts": []
