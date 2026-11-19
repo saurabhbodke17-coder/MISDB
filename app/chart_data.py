@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from .analytics import BATCH_SCOPE, Filters, filters, metric_settings, params
 from .auth import current_user
-from .db import one, query
+from .db import one, query, read_connection
 from .plots import attendance_heatmap, student_scatter, task_timeline
 from .records import source_query
 
@@ -236,11 +236,39 @@ class ChartContext:
                 note="Unresolved delivery evidence: elapsed sessions still scheduled with no start/end telemetry or attendance. The source does not identify confirmed or approved cancellations.",
             )
         if metric == "score":
-            return dataset(
-                [],
-                unit="%",
-                note="We do not currently store examination or weekly assessment score data in the database. No placeholder or mock score data is displayed.",
-            )
+            from .exams import build_exams_filter
+            with read_connection("internal_data.exams_latest") as conn:
+                where, p = build_exams_filter(
+                    conn,
+                    from_date=f.from_date,
+                    to_date=f.to_date,
+                    batch_id=f.batch_id,
+                    semester_id=f.semester_id,
+                    graduation_year_id=f.graduation_year_id,
+                )
+                time_expr = f"date_trunc('{bucket}',exam_date)::date"
+                group_map = {
+                    "time": time_expr,
+                    "batch": "batch",
+                    "subject": "subject_name",
+                    "semester": "semester",
+                }
+                group_col = group_map.get(dimension, time_expr)
+                order = "value DESC,name" if dimension in {"batch", "mentor", "subject", "semester"} else "name"
+                rows = conn.execute(
+                    f"""SELECT {group_col} AS name,
+                        ROUND(AVG((marks_scored::numeric / maximum_marks::numeric) * 100), 1) AS value
+                    FROM internal_data.exams_latest
+                    WHERE {where}
+                    GROUP BY 1 ORDER BY {order}""",
+                    p,
+                ).fetchall()
+                cleaned = [{"name": str(r["name"]), "value": float(r["value"]) if r["value"] is not None else 0.0} for r in rows]
+                return dataset(
+                    cleaned,
+                    unit="%",
+                    note="Average score percentage across recorded evaluations, vivas, and examinations.",
+                )
         if metric == "assess":
             sql, p = assessment_facts(f)
             expression = COMP_RATE
@@ -357,11 +385,40 @@ class ChartContext:
         if metric == "ontime" and self.metric_data("ontime")["status"] == "unavailable":
             return unavailable(TIMING_GAP)
         if metric == "score":
-            return dataset(
-                [],
-                unit="%",
-                note="We do not currently store examination or weekly assessment score data in the database. No placeholder or mock score data is displayed.",
-            )
+            from .exams import build_exams_filter
+            with read_connection("internal_data.exams_latest") as conn:
+                where, p = build_exams_filter(
+                    conn,
+                    from_date=self.f.from_date,
+                    to_date=self.f.to_date,
+                    batch_id=self.f.batch_id,
+                    semester_id=self.f.semester_id,
+                    graduation_year_id=self.f.graduation_year_id,
+                )
+                rows = conn.execute(
+                    f"""SELECT batch AS row, date_trunc('week', exam_date)::date AS column,
+                        ROUND(AVG((marks_scored::numeric / maximum_marks::numeric) * 100), 1) AS value,
+                        date_trunc('week', exam_date)::date AS date
+                    FROM internal_data.exams_latest
+                    WHERE {where}
+                    GROUP BY batch, date_trunc('week', exam_date)::date
+                    ORDER BY batch, date_trunc('week', exam_date)::date""",
+                    p,
+                ).fetchall()
+                return dataset(
+                    [
+                        {
+                            "row": r["row"],
+                            "column": str(r["column"]),
+                            "value": float(r["value"]) if r["value"] is not None else 0.0,
+                            "date": str(r["date"]),
+                        }
+                        for r in rows
+                    ],
+                    unit="%",
+                    heatmap_mode="percentage",
+                    note="Average score % across evaluated examination and continuous assessment records.",
+                )
         if metric == "feedback":
             sql, p = scoped("mentor_feedback", self.f)
             expr = "round(avg(rating), 2)"
@@ -465,12 +522,6 @@ class ChartContext:
                     note="Recorded milestone flags on scoped allocations. Milestones are independent checks, not a sequential funnel or proof of demo readiness.",
                 )
         if domain == "trends":
-            if self.metric == "score":
-                return dataset(
-                    [],
-                    unit="%",
-                    note="We do not currently store examination or weekly assessment score data in the database. No placeholder or mock score data is displayed.",
-                )
             if mode == "heatmap":
                 return self.metric_heatmap(self.metric)
             if mode != "series":

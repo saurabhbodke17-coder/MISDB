@@ -10,7 +10,7 @@ from psycopg import IntegrityError, OperationalError
 from psycopg_pool import PoolTimeout
 from pydantic import BaseModel, ConfigDict, Field
 
-from . import ai, analytics, auth, calendar, chart_data, db, plots, records, support, workflows
+from . import ai, analytics, auth, calendar, chart_data, db, exams, plots, records, support, workflows
 from .auth import admin, current_user
 from .config import settings
 
@@ -114,6 +114,7 @@ for router in [
     plots.router,
     chart_data.router,
     calendar.router,
+    exams.router,
     ai.router,
 ]:
     app.include_router(router, prefix="/api")

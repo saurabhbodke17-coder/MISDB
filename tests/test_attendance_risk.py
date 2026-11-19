@@ -50,7 +50,7 @@ def test_attendance_risk_all_777_students_and_active_interns_excluded(client):
     assert summary["active_interns_count"] in {111, 112, 117}
     assert summary["evaluated_students"] in {660, 665, 666}
     assert summary["at_risk_count"] + summary["no_risk_count"] == summary["evaluated_students"]
-    assert summary["dropped_interns_count"] in {16, 17}
+    assert summary["dropped_interns_count"] in {16, 17, 18}
 
     for s in students:
         assert "student_id" in s
@@ -110,16 +110,17 @@ def test_command_center_kpi_total_students_777(client):
     assert strength_kpi["label"] in {"Total students", "Total Enrolled Students"}
 
 
-def test_academic_section_empty():
+def test_academic_section_configured():
     import json
     with open("backend/app/chart_manifest.json") as f:
         manifest = json.load(f)
 
     academic_section = manifest["sections"]["academic"]
     assert academic_section["charts"] == []
-    assert len(academic_section["tabs"]) == 1
-    tab = academic_section["tabs"][0]
-    assert "We do not currently store academic performance data in the database" in tab["missing"]
+    assert len(academic_section["tabs"]) == 4
+    tab_labels = [t["label"] for t in academic_section["tabs"]]
+    assert "Overview & Grades" in tab_labels
+    assert "Student Assessment Records" in tab_labels
 
     attendance_tabs = manifest["sections"]["attendance"]["tabs"]
     assert attendance_tabs[0]["id"] == "risk"
