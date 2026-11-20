@@ -568,8 +568,9 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
                     gap: '16px',
+                    alignItems: 'stretch',
                   }}
                 >
                   {filteredCards.map((card) => {
@@ -585,21 +586,29 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                           padding: '16px',
                           display: 'flex',
                           flexDirection: 'column',
+                          justifyContent: 'space-between',
                           gap: '14px',
+                          height: '100%',
+                          boxSizing: 'border-box',
                           transition: 'all 0.2s ease',
                         }}
                       >
-                        {/* Top Header */}
+                        {/* Top Header with Fixed Heights for Perfect Row Alignment */}
                         <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
                             <h3
                               style={{
                                 margin: 0,
                                 fontSize: '14px',
                                 fontWeight: 700,
                                 color: 'var(--ink)',
-                                lineHeight: '1.3',
+                                lineHeight: '1.35',
                                 flex: 1,
+                                minHeight: '38px',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
                               }}
                               title={card.subject_name}
                             >
@@ -616,77 +625,212 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                                 borderRadius: '10px',
                                 letterSpacing: '0.3px',
                                 flexShrink: 0,
+                                marginTop: '1px',
                               }}
                             >
                               {card.semester}
                             </span>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--muted)', flexWrap: 'wrap' }}>
-                            <Users size={12} />
-                            <span>{card.student_count} Students Enrolled</span>
-                            <span>•</span>
-                            <span title={card.batches}>Batches: {card.batches || 'Pioneer'}</span>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              fontSize: '11px',
+                              color: 'var(--muted)',
+                              height: '18px',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            <Users size={12} style={{ flexShrink: 0 }} />
+                            <span style={{ flexShrink: 0 }}>{card.student_count} Students Enrolled</span>
+                            <span style={{ flexShrink: 0 }}>•</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={card.batches}>
+                              Batches: {card.batches || 'Pioneer'}
+                            </span>
                           </div>
                         </div>
 
-                        {/* 4 Parameters Grid */}
+                        {/* 4 Parameters Grid: Unified Box Height, Baseline, and Bar Alignment */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                           {/* 1. Mid-Sem */}
-                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.2px' }}>
+                          <div
+                            style={{
+                              background: 'var(--surface2)',
+                              borderRadius: '6px',
+                              padding: '10px 8px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              height: '78px',
+                              boxSizing: 'border-box',
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: '10px',
+                                color: 'var(--secondary)',
+                                textTransform: 'uppercase',
+                                fontWeight: 600,
+                                letterSpacing: '0.2px',
+                                height: '24px',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                lineHeight: '1.2',
+                              }}
+                            >
                               Mid-Sem
                             </div>
-                            <div style={{ fontSize: '16px', fontWeight: 700, color: card.midsem_avg !== null ? 'var(--ink)' : 'var(--muted)' }}>
+                            <div
+                              style={{
+                                fontSize: '16px',
+                                fontWeight: 700,
+                                lineHeight: '1',
+                                color: card.midsem_avg !== null ? 'var(--ink)' : 'var(--muted)',
+                              }}
+                            >
                               {card.midsem_avg !== null ? `${card.midsem_avg}%` : '—'}
                             </div>
-                            <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden', marginTop: '2px' }}>
                               <div style={{ height: '100%', width: `${Math.min(100, card.midsem_avg || 0)}%`, background: '#8b5cf6', borderRadius: '2px' }} />
                             </div>
                           </div>
 
                           {/* 2. Weekly Eval */}
-                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.2px' }}>
+                          <div
+                            style={{
+                              background: 'var(--surface2)',
+                              borderRadius: '6px',
+                              padding: '10px 8px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              height: '78px',
+                              boxSizing: 'border-box',
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: '10px',
+                                color: 'var(--secondary)',
+                                textTransform: 'uppercase',
+                                fontWeight: 600,
+                                letterSpacing: '0.2px',
+                                height: '24px',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                lineHeight: '1.2',
+                              }}
+                            >
                               Weekly Eval
                             </div>
-                            <div style={{ fontSize: '16px', fontWeight: 700, color: card.eval_avg !== null ? 'var(--ink)' : 'var(--muted)' }}>
+                            <div
+                              style={{
+                                fontSize: '16px',
+                                fontWeight: 700,
+                                lineHeight: '1',
+                                color: card.eval_avg !== null ? 'var(--ink)' : 'var(--muted)',
+                              }}
+                            >
                               {card.eval_avg !== null ? `${card.eval_avg}%` : '—'}
                             </div>
-                            <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden', marginTop: '2px' }}>
                               <div style={{ height: '100%', width: `${Math.min(100, card.eval_avg || 0)}%`, background: '#3b82f6', borderRadius: '2px' }} />
                             </div>
                           </div>
 
                           {/* 3. Viva Voce */}
-                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.2px' }}>
+                          <div
+                            style={{
+                              background: 'var(--surface2)',
+                              borderRadius: '6px',
+                              padding: '10px 8px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              height: '78px',
+                              boxSizing: 'border-box',
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: '10px',
+                                color: 'var(--secondary)',
+                                textTransform: 'uppercase',
+                                fontWeight: 600,
+                                letterSpacing: '0.2px',
+                                height: '24px',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                lineHeight: '1.2',
+                              }}
+                            >
                               Viva Voce
                             </div>
-                            <div style={{ fontSize: '16px', fontWeight: 700, color: card.viva_avg !== null ? 'var(--ink)' : 'var(--muted)' }}>
+                            <div
+                              style={{
+                                fontSize: '16px',
+                                fontWeight: 700,
+                                lineHeight: '1',
+                                color: card.viva_avg !== null ? 'var(--ink)' : 'var(--muted)',
+                              }}
+                            >
                               {card.viva_avg !== null ? `${card.viva_avg}%` : '—'}
                             </div>
-                            <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden', marginTop: '2px' }}>
                               <div style={{ height: '100%', width: `${Math.min(100, card.viva_avg || 0)}%`, background: '#f59e0b', borderRadius: '2px' }} />
                             </div>
                           </div>
 
                           {/* 4. End-Sem */}
-                          <div style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.2px' }}>
+                          <div
+                            style={{
+                              background: 'var(--surface2)',
+                              borderRadius: '6px',
+                              padding: '10px 8px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              height: '78px',
+                              boxSizing: 'border-box',
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: '10px',
+                                color: 'var(--secondary)',
+                                textTransform: 'uppercase',
+                                fontWeight: 600,
+                                letterSpacing: '0.2px',
+                                height: '24px',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                lineHeight: '1.2',
+                              }}
+                            >
                               End-Sem
                             </div>
-                            <div style={{ fontSize: '16px', fontWeight: 700, color: card.endsem_avg !== null ? 'var(--ink)' : 'var(--muted)' }}>
+                            <div
+                              style={{
+                                fontSize: '16px',
+                                fontWeight: 700,
+                                lineHeight: '1',
+                                color: card.endsem_avg !== null ? 'var(--ink)' : 'var(--muted)',
+                              }}
+                            >
                               {card.endsem_avg !== null ? `${card.endsem_avg}%` : '—'}
                             </div>
-                            <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div style={{ height: '4px', width: '100%', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden', marginTop: '2px' }}>
                               <div style={{ height: '100%', width: `${Math.min(100, card.endsem_avg || 0)}%`, background: '#10b981', borderRadius: '2px' }} />
                             </div>
                           </div>
                         </div>
 
-                        {/* Card Action Link */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '6px', borderTop: '1px solid var(--line)' }}>
+                        {/* Card Action Link: Pinned to Bottom with marginTop: auto */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '10px', marginTop: 'auto', borderTop: '1px solid var(--line)' }}>
                           <button
                             onClick={() => {
                               setSelectedSubject(card.subject_name);
