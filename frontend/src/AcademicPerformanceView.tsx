@@ -1,16 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Award,
   Users,
-  CheckCircle2,
   Search,
   Download,
   Calendar,
   ChevronLeft,
   ChevronRight,
-  BarChart3,
-  FileText,
   X,
   ArrowRight,
   HelpCircle,
@@ -164,7 +160,6 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
     staleTime: 30000,
   });
 
-  const kpis = data?.kpis;
   const charts = data?.charts;
   const records = data?.records || [];
   const pagination = data?.pagination;
@@ -366,94 +361,7 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
         )}
       </Card>
 
-      {/* 2. Top Summary KPI Cards */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: '12px',
-        }}
-      >
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '8px', padding: '14px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--secondary)' }}>Evaluated Submissions</span>
-            <FileText size={16} color="var(--accent)" />
-          </div>
-          <div style={{ fontSize: '22px', fontWeight: 700, color: 'var(--ink)' }}>
-            {(kpis?.total_submissions || 0).toLocaleString()}
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
-            Across {kpis?.unique_subjects || 0} subjects
-          </div>
-        </div>
-
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '8px', padding: '14px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--secondary)' }}>Average Score %</span>
-            <BarChart3 size={16} color="#3b82f6" />
-          </div>
-          <div style={{ fontSize: '22px', fontWeight: 700, color: (kpis?.avg_score_pct || 0) >= 50 ? '#10b981' : '#f59e0b' }}>
-            {kpis?.avg_score_pct || 0}%
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
-            Cohort mean percentage
-          </div>
-        </div>
-
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '8px', padding: '14px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--secondary)' }}>Pass Rate (≥40%)</span>
-            <CheckCircle2 size={16} color="#10b981" />
-          </div>
-          <div style={{ fontSize: '22px', fontWeight: 700, color: '#10b981' }}>
-            {kpis?.pass_rate || 0}%
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
-            Minimum passing grade
-          </div>
-        </div>
-
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '8px', padding: '14px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--secondary)' }}>Distinction (≥75%)</span>
-            <Award size={16} color="#8b5cf6" />
-          </div>
-          <div style={{ fontSize: '22px', fontWeight: 700, color: '#8b5cf6' }}>
-            {kpis?.distinction_rate || 0}%
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
-            Top percentile achievers
-          </div>
-        </div>
-
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '8px', padding: '14px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--secondary)' }}>Assessed Students</span>
-            <Users size={16} color="#06b6d4" />
-          </div>
-          <div style={{ fontSize: '22px', fontWeight: 700, color: 'var(--ink)' }}>
-            {(kpis?.unique_students || 0).toLocaleString()}
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
-            Distinct student records
-          </div>
-        </div>
-
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '8px', padding: '14px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--secondary)' }}>Exam Attendance</span>
-            <Calendar size={16} color="#ec4899" />
-          </div>
-          <div style={{ fontSize: '22px', fontWeight: 700, color: (kpis?.attendance_rate || 0) >= 75 ? '#10b981' : '#f59e0b' }}>
-            {kpis?.attendance_rate || 0}%
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
-            Present on scheduled date
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Main Views depending on activeTab / effectiveTab */}
+      {/* 2. Main Views depending on activeTab / effectiveTab */}
       {effectiveTab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* A. Subject Academic Scorecards Section */}
