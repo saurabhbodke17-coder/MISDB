@@ -285,13 +285,6 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
   if (filters.semester_id) activeFilterTags.push('Filtered by Semester');
   if (filters.batch_id) activeFilterTags.push('Filtered by Batch');
 
-  const tierColors: Record<string, string> = {
-    'Distinction (>=75%)': '#10b981',
-    'First Class (60-74%)': '#3b82f6',
-    'Pass (40-59%)': '#f59e0b',
-    'At Risk (<40%)': '#ef4444',
-  };
-
   return (
     <div className="academic-performance-view" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* 1. Header Banner */}
@@ -722,78 +715,6 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
               )}
             </div>
           </Card>
-
-          {/* B. Macro Grade Distribution and Assessment Types Charts */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '16px' }}>
-            {/* Grade Distribution Bar Chart */}
-            <Card title="Cohort Grade & Performance Distribution">
-              <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--secondary)' }}>
-                Breakdown of student submissions across performance tiers.
-              </p>
-              <div style={{ height: 260, width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={charts?.grade_distribution || []} margin={{ top: 10, right: 20, left: 0, bottom: 25 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--secondary)' }} interval={0} angle={-10} textAnchor="end" />
-                    <YAxis unit="%" tick={{ fontSize: 11, fill: 'var(--secondary)' }} domain={[0, 100]} />
-                    <Tooltip
-                      contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '6px', fontSize: '12px' }}
-                      formatter={(val, _name, item) => [`${val}% (${(item.payload.count || 0).toLocaleString()} submissions)`, 'Share']}
-                    />
-                    <Bar dataKey="percentage" radius={[4, 4, 0, 0]}>
-                      {(charts?.grade_distribution || []).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={tierColors[entry.name] || '#3b82f6'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              {/* Grade summary pill cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginTop: '12px' }}>
-                {(charts?.grade_distribution || []).map((tier, idx) => (
-                  <div key={idx} style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '8px 10px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--secondary)', marginBottom: '2px' }}>{tier.name.split(' ')[0]}</div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: tierColors[tier.name] || 'var(--ink)' }}>{tier.percentage}%</div>
-                    <div style={{ fontSize: '10px', color: 'var(--muted)' }}>{(tier.count || 0).toLocaleString()}</div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            {/* Assessment Types Breakdown */}
-            <Card title="Performance by Assessment Type">
-              <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--secondary)' }}>
-                Comparison of student performance in continuous evaluations vs vivas vs mid-terms.
-              </p>
-              <div style={{ height: 260, width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={charts?.assessment_types || []} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--secondary)' }} />
-                    <YAxis unit="%" tick={{ fontSize: 11, fill: 'var(--secondary)' }} domain={[0, 100]} />
-                    <Tooltip
-                      contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '6px', fontSize: '12px' }}
-                      formatter={(val, _name, item) => [
-                        `${val}% (Submissions: ${(item.payload.count || 0).toLocaleString()}, Attendance: ${item.payload.attendance_rate}%)`,
-                        'Average Score',
-                      ]}
-                    />
-                    <ReferenceLine y={40} stroke="#ef4444" strokeDasharray="3 3" label={{ value: '40% Pass Mark', fill: '#ef4444', fontSize: 10, position: 'right' }} />
-                    <Bar dataKey="avg_score" fill="var(--accent)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, (charts?.assessment_types || []).length)}, 1fr)`, gap: '8px', marginTop: '12px' }}>
-                {(charts?.assessment_types || []).map((t, idx) => (
-                  <div key={idx} style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '8px 10px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--secondary)', marginBottom: '2px' }}>{t.name}</div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--accent)' }}>{t.avg_score}%</div>
-                    <div style={{ fontSize: '10px', color: 'var(--muted)' }}>Attendance: {t.attendance_rate}%</div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
         </div>
       )}
 
