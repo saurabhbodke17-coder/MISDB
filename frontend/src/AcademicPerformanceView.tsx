@@ -28,6 +28,7 @@ import { Card, Loading, ErrorState, Badge } from './components';
 
 export interface SubjectCard {
   id: string;
+  cohort?: string;
   subject_name: string;
   semester: string;
   batches: string;
@@ -103,6 +104,9 @@ export interface AcademicPerformanceApiResponse {
   filter_options: {
     exam_types: string[];
     subjects: string[];
+    cohorts?: string[];
+    eval_counts?: string[];
+    viva_counts?: string[];
   };
 }
 
@@ -124,13 +128,16 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
 
   // Subject cards state on Overview tab
   const [cardSemester, setCardSemester] = useState<string>('all');
+  const [cardCohort, setCardCohort] = useState<string>('all');
   const [cardSearch, setCardSearch] = useState<string>('');
   const [cardSort, setCardSort] = useState<string>('name_asc');
 
   // Local state for table search, sub-filters, pagination, and feedback modal
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedExamType, setSelectedExamType] = useState('all');
+  const [selectedIteration, setSelectedIteration] = useState('all');
   const [selectedSubject, setSelectedSubject] = useState('all');
+  const [selectedCohort, setSelectedCohort] = useState('all');
   const [selectedTier, setSelectedTier] = useState('all');
   const [sortBy, setSortBy] = useState('date_desc');
   const [page, setPage] = useState(1);
@@ -145,11 +152,21 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
       sort_by: sortBy,
     };
     if (selectedExamType !== 'all') q.exam_type = selectedExamType;
-    if (selectedSubject !== 'all') q.subject = selectedSubject;
+    if (selectedIteration !== 'all') q.exam_count = selectedIteration;
+    if (selectedSubject !== 'all') {
+      q.subject = selectedSubject;
+      delete q.from_date;
+      delete q.to_date;
+    }
+    if (selectedCohort !== 'all') {
+      q.cohort = selectedCohort;
+      delete q.from_date;
+      delete q.to_date;
+    }
     if (selectedTier !== 'all') q.tier = selectedTier;
     if (searchTerm.trim()) q.search = searchTerm.trim();
     return q;
-  }, [filters, page, sortBy, selectedExamType, selectedSubject, selectedTier, searchTerm]);
+  }, [filters, page, sortBy, selectedExamType, selectedIteration, selectedSubject, selectedCohort, selectedTier, searchTerm]);
 
   const { data, isLoading, isError, error, refetch } = useQuery<AcademicPerformanceApiResponse>({
     queryKey: ['academic-performance', queryParams],
@@ -173,10 +190,21 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
     return Array.from(sems).sort();
   }, [subjectCards]);
 
+  const availableCohorts = useMemo(() => {
+    const cohs = new Set<string>();
+    subjectCards.forEach((c) => {
+      if (c.cohort && c.cohort !== 'General') cohs.add(c.cohort);
+    });
+    return Array.from(cohs).sort();
+  }, [subjectCards]);
+
   const filteredCards = useMemo(() => {
     let list = [...subjectCards];
     if (cardSemester !== 'all') {
       list = list.filter((c) => c.semester.toUpperCase() === cardSemester.toUpperCase());
+    }
+    if (cardCohort !== 'all') {
+      list = list.filter((c) => (c.cohort || '').toLowerCase() === cardCohort.toLowerCase());
     }
     if (cardSearch.trim()) {
       const term = cardSearch.toLowerCase().trim();
@@ -184,7 +212,8 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
         (c) =>
           c.subject_name.toLowerCase().includes(term) ||
           c.semester.toLowerCase().includes(term) ||
-          c.batches.toLowerCase().includes(term)
+          c.batches.toLowerCase().includes(term) ||
+          (c.cohort && c.cohort.toLowerCase().includes(term))
       );
     }
     list.sort((a, b) => {
@@ -193,11 +222,16 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
       if (cardSort === 'eval_desc') return (b.eval_avg || 0) - (a.eval_avg || 0);
       if (cardSort === 'viva_desc') return (b.viva_avg ?? -1) - (a.viva_avg ?? -1);
       if (cardSort === 'students_desc') return b.student_count - a.student_count;
-      if (cardSort === 'name_asc') return a.subject_name.localeCompare(b.subject_name);
+      if (cardSort === 'cohort_desc') return (b.cohort || '').localeCompare(a.cohort || '');
+      if (cardSort === 'name_asc') {
+        const cmp = a.subject_name.localeCompare(b.subject_name);
+        if (cmp !== 0) return cmp;
+        return (a.cohort || '').localeCompare(b.cohort || '');
+      }
       return 0;
     });
     return list;
-  }, [subjectCards, cardSemester, cardSearch, cardSort]);
+  }, [subjectCards, cardSemester, cardCohort, cardSearch, cardSort]);
 
   const getSemesterStyle = (sem: string) => {
     if (sem.includes('1')) return { bg: 'rgba(14, 165, 233, 0.12)', color: '#0284c7', border: 'rgba(14, 165, 233, 0.3)' };
@@ -206,6 +240,27 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
     if (sem.includes('4')) return { bg: 'rgba(236, 72, 153, 0.12)', color: '#ec4899', border: 'rgba(236, 72, 153, 0.3)' };
     return { bg: 'var(--surface2)', color: 'var(--ink)', border: 'var(--line)' };
   };
+
+  const isWeeklyEvalSelected =
+    selectedExamType.toLowerCase().includes('weekly') ||
+    selectedExamType.toLowerCase().includes('eval') ||
+    selectedExamType.toLowerCase().includes('internal');
+  const isVivaSelected = selectedExamType.toLowerCase().includes('viva');
+  const showIterationButtons = isWeeklyEvalSelected || isVivaSelected;
+
+  const activeIterationList = useMemo(() => {
+    if (isWeeklyEvalSelected) {
+      return data?.filter_options?.eval_counts && data.filter_options.eval_counts.length > 0
+        ? data.filter_options.eval_counts
+        : ['Eval 1', 'Eval 2', 'Eval 3', 'Eval 4', 'Eval 5', 'Eval 6'];
+    }
+    if (isVivaSelected) {
+      return data?.filter_options?.viva_counts && data.filter_options.viva_counts.length > 0
+        ? data.filter_options.viva_counts
+        : ['Viva 1', 'Viva 2', 'Viva 3'];
+    }
+    return [];
+  }, [isWeeklyEvalSelected, isVivaSelected, data?.filter_options?.eval_counts, data?.filter_options?.viva_counts]);
 
   // CSV Export
   const handleExportCSV = () => {
@@ -283,35 +338,26 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
   return (
     <div className="academic-performance-view" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* 1. Header Banner */}
-      <Card title="Student Academic Performance (Beta)">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--ink)' }}>
-                Student Academic Performance
-              </h2>
-              <span
-                style={{
-                  background: 'rgba(36, 87, 214, 0.12)',
-                  color: 'var(--accent)',
-                  border: '1px solid rgba(36, 87, 214, 0.3)',
-                  padding: '2px 7px',
-                  borderRadius: '12px',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                }}
-              >
-                Beta
-              </span>
-            </div>
-            <p style={{ margin: 0, fontSize: '12px', color: 'var(--secondary)' }}>
-              Live evaluation records, oral vivas, and examinations across cohorts and subjects.
-            </p>
-          </div>
-
+      <Card
+        title="Student Academic Performance"
+        subtitle="Live evaluation records, oral vivas, and examinations across cohorts and subjects."
+        action={
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span
+              style={{
+                background: 'rgba(36, 87, 214, 0.12)',
+                color: 'var(--accent)',
+                border: '1px solid rgba(36, 87, 214, 0.3)',
+                padding: '2px 7px',
+                borderRadius: '12px',
+                fontSize: '10px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}
+            >
+              Beta
+            </span>
             <button
               onClick={handleExportCSV}
               style={{
@@ -333,11 +379,11 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
               Export CSV
             </button>
           </div>
-        </div>
-
+        }
+      >
         {/* Filter tags pill row */}
         {activeFilterTags.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '12px 18px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               <Calendar size={12} /> Active Global Filters:
             </span>
@@ -365,105 +411,226 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
       {effectiveTab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* A. Subject Academic Scorecards Section */}
-          <Card title="Subject Academic Performance">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--secondary)' }}>
-                  Average percentage marks across <strong>Mid-Sem</strong>, <strong>Weekly Eval</strong>, <strong>Viva Voce</strong>, and <strong>End-Sem</strong> examinations.
-                </p>
-                <div style={{ fontSize: '11px', color: 'var(--muted)', background: 'var(--surface2)', padding: '4px 10px', borderRadius: '4px', fontWeight: 500 }}>
-                  Showing {filteredCards.length} of {subjectCards.length} Subjects
-                </div>
-              </div>
+          <Card
+            title="Subject Academic Performance"
+            subtitle="Average percentage marks across Mid-Sem, Weekly Eval, Viva Voce, and End-Sem examinations."
+            action={
+              <span
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--accent)',
+                  background: 'rgba(59, 130, 246, 0.12)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  padding: '3px 9px',
+                  borderRadius: '12px',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Showing {filteredCards.length} of {subjectCards.length} Subjects
+              </span>
+            }
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px 18px' }}>
 
-              {/* Filter Controls Row */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', justifyContent: 'space-between' }}>
-                {/* Semester Pills */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => setCardSemester('all')}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: '16px',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      border: '1px solid',
-                      background: cardSemester === 'all' ? 'var(--accent)' : 'var(--surface)',
-                      color: cardSemester === 'all' ? '#ffffff' : 'var(--ink)',
-                      borderColor: cardSemester === 'all' ? 'var(--accent)' : 'var(--line)',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    All ({subjectCards.length})
-                  </button>
-                  {availableSemesters.map((sem) => {
-                    const count = subjectCards.filter((c) => c.semester === sem).length;
-                    const isSel = cardSemester === sem;
-                    return (
-                      <button
-                        key={sem}
-                        onClick={() => setCardSemester(sem)}
+              {/* Filter Controls Panel: Unified, Organized & Responsive */}
+              <div
+                style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--line)',
+                  borderRadius: '8px',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                }}
+              >
+                {/* Search & Sort Row */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 300px', flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', flex: '1 1 220px', maxWidth: '340px' }}>
+                      <Search size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+                      <input
+                        type="text"
+                        placeholder="Search subject or cohort..."
+                        value={cardSearch}
+                        onChange={(e) => setCardSearch(e.target.value)}
                         style={{
-                          padding: '5px 12px',
-                          borderRadius: '16px',
+                          width: '100%',
+                          padding: '7px 10px 7px 28px',
                           fontSize: '12px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          border: '1px solid',
-                          background: isSel ? 'var(--accent)' : 'var(--surface)',
-                          color: isSel ? '#ffffff' : 'var(--ink)',
-                          borderColor: isSel ? 'var(--accent)' : 'var(--line)',
-                          transition: 'all 0.15s ease',
+                          background: 'var(--surface)',
+                          border: '1px solid var(--line)',
+                          borderRadius: '6px',
+                          color: 'var(--ink)',
+                          boxSizing: 'border-box',
                         }}
-                      >
-                        {sem} ({count})
-                      </button>
-                    );
-                  })}
-                </div>
+                      />
+                      {cardSearch && (
+                        <button
+                          onClick={() => setCardSearch('')}
+                          style={{
+                            position: 'absolute',
+                            right: 8,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--muted)',
+                            cursor: 'pointer',
+                            padding: 0,
+                            fontSize: '14px',
+                          }}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
 
-                {/* Search & Sort Controls */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <div style={{ position: 'relative', width: '220px' }}>
-                    <Search size={13} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
-                    <input
-                      type="text"
-                      placeholder="Search subject..."
-                      value={cardSearch}
-                      onChange={(e) => setCardSearch(e.target.value)}
+                    <select
+                      value={cardSort}
+                      onChange={(e) => setCardSort(e.target.value)}
                       style={{
-                        width: '100%',
-                        padding: '6px 8px 6px 26px',
+                        padding: '7px 10px',
                         fontSize: '12px',
                         background: 'var(--surface)',
                         border: '1px solid var(--line)',
                         borderRadius: '6px',
                         color: 'var(--ink)',
-                        boxSizing: 'border-box',
+                        cursor: 'pointer',
                       }}
-                    />
+                    >
+                      <option value="name_asc">Sort: Subject Name (A-Z)</option>
+                      <option value="cohort_desc">Sort: Cohort (Newest First)</option>
+                      <option value="endsem_desc">Sort: End-Sem (High to Low)</option>
+                      <option value="midsem_desc">Sort: Mid-Sem (High to Low)</option>
+                      <option value="eval_desc">Sort: Weekly Eval (High to Low)</option>
+                      <option value="viva_desc">Sort: Viva Voce (High to Low)</option>
+                      <option value="students_desc">Sort: Student Count</option>
+                    </select>
+
+                    {(cardSemester !== 'all' || cardCohort !== 'all' || cardSearch.trim()) && (
+                      <button
+                        onClick={() => {
+                          setCardSemester('all');
+                          setCardCohort('all');
+                          setCardSearch('');
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--accent)',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          padding: '4px 6px',
+                        }}
+                      >
+                        Reset filters
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Filters Row: Semesters & Cohorts aligned together */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '4px', borderTop: '1px solid var(--line)' }}>
+                  {/* Semester Pills */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--muted)', width: '65px', flexShrink: 0 }}>
+                      SEMESTER:
+                    </span>
+                    <button
+                      onClick={() => setCardSemester('all')}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '14px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        border: '1px solid',
+                        background: cardSemester === 'all' ? 'var(--accent)' : 'var(--surface)',
+                        color: cardSemester === 'all' ? '#ffffff' : 'var(--ink)',
+                        borderColor: cardSemester === 'all' ? 'var(--accent)' : 'var(--line)',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      All ({subjectCards.length})
+                    </button>
+                    {availableSemesters.map((sem) => {
+                      const count = subjectCards.filter((c) => c.semester === sem).length;
+                      const isSel = cardSemester === sem;
+                      return (
+                        <button
+                          key={sem}
+                          onClick={() => setCardSemester(sem)}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '14px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            border: '1px solid',
+                            background: isSel ? 'var(--accent)' : 'var(--surface)',
+                            color: isSel ? '#ffffff' : 'var(--ink)',
+                            borderColor: isSel ? 'var(--accent)' : 'var(--line)',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          {sem} ({count})
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  <select
-                    value={cardSort}
-                    onChange={(e) => setCardSort(e.target.value)}
-                    style={{
-                      padding: '6px 10px',
-                      fontSize: '12px',
-                      background: 'var(--surface)',
-                      border: '1px solid var(--line)',
-                      borderRadius: '6px',
-                      color: 'var(--ink)',
-                    }}
-                  >
-                    <option value="name_asc">Subject Name (A-Z)</option>
-                    <option value="endsem_desc">End-Sem (High to Low)</option>
-                    <option value="midsem_desc">Mid-Sem (High to Low)</option>
-                    <option value="eval_desc">Weekly Eval (High to Low)</option>
-                    <option value="viva_desc">Viva Voce (High to Low)</option>
-                    <option value="students_desc">Student Count (Highest First)</option>
-                  </select>
+                  {/* Cohort Pills */}
+                  {availableCohorts.length > 1 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--muted)', width: '65px', flexShrink: 0 }}>
+                        COHORT:
+                      </span>
+                      <button
+                        onClick={() => setCardCohort('all')}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '14px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          border: '1px solid',
+                          background: cardCohort === 'all' ? 'rgba(59, 130, 246, 0.2)' : 'var(--surface)',
+                          color: cardCohort === 'all' ? '#60a5fa' : 'var(--secondary)',
+                          borderColor: cardCohort === 'all' ? '#3b82f6' : 'var(--line)',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        All Cohorts ({subjectCards.length})
+                      </button>
+                      {availableCohorts.map((coh) => {
+                        const count = subjectCards.filter((c) => c.cohort === coh).length;
+                        const isSel = cardCohort === coh;
+                        return (
+                          <button
+                            key={coh}
+                            onClick={() => setCardCohort(coh)}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '14px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              border: '1px solid',
+                              background: isSel ? 'rgba(59, 130, 246, 0.2)' : 'var(--surface)',
+                              color: isSel ? '#60a5fa' : 'var(--secondary)',
+                              borderColor: isSel ? '#3b82f6' : 'var(--line)',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            Cohort {coh} ({count})
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -476,7 +643,7 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
                     gap: '16px',
                     alignItems: 'stretch',
                   }}
@@ -501,27 +668,9 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                           transition: 'all 0.2s ease',
                         }}
                       >
-                        {/* Top Header with Fixed Heights for Perfect Row Alignment */}
+                        {/* Top Header: Badges First so Title has 100% Width */}
                         <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
-                            <h3
-                              style={{
-                                margin: 0,
-                                fontSize: '14px',
-                                fontWeight: 700,
-                                color: 'var(--ink)',
-                                lineHeight: '1.35',
-                                flex: 1,
-                                minHeight: '38px',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden',
-                              }}
-                              title={card.subject_name}
-                            >
-                              {card.subject_name}
-                            </h3>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
                             <span
                               style={{
                                 background: semStyle.bg,
@@ -530,15 +679,49 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                                 fontSize: '10px',
                                 fontWeight: 700,
                                 padding: '2px 8px',
-                                borderRadius: '10px',
+                                borderRadius: '6px',
                                 letterSpacing: '0.3px',
-                                flexShrink: 0,
-                                marginTop: '1px',
+                                whiteSpace: 'nowrap',
                               }}
                             >
                               {card.semester}
                             </span>
+                            {card.cohort && card.cohort !== 'General' && (
+                              <span
+                                style={{
+                                  background: 'rgba(59, 130, 246, 0.12)',
+                                  color: '#60a5fa',
+                                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '2px 8px',
+                                  borderRadius: '6px',
+                                  letterSpacing: '0.3px',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                Cohort {card.cohort}
+                              </span>
+                            )}
                           </div>
+
+                          <h3
+                            style={{
+                              margin: '0 0 8px 0',
+                              fontSize: '14px',
+                              fontWeight: 700,
+                              color: 'var(--ink)',
+                              lineHeight: '1.4',
+                              minHeight: '38px',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}
+                            title={card.subject_name}
+                          >
+                            {card.subject_name}
+                          </h3>
 
                           <div
                             style={{
@@ -547,14 +730,14 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                               gap: '6px',
                               fontSize: '11px',
                               color: 'var(--muted)',
-                              height: '18px',
+                              marginBottom: '12px',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                             }}
                           >
                             <Users size={12} style={{ flexShrink: 0 }} />
-                            <span style={{ flexShrink: 0 }}>{card.student_count} Students Enrolled</span>
+                            <span style={{ flexShrink: 0, fontWeight: 500 }}>{card.student_count} Students Enrolled</span>
                             <span style={{ flexShrink: 0 }}>•</span>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={card.batches}>
                               Batches: {card.batches || 'Pioneer'}
@@ -742,6 +925,12 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
                           <button
                             onClick={() => {
                               setSelectedSubject(card.subject_name);
+                              setSelectedCohort(card.cohort && card.cohort !== 'General' ? card.cohort : 'all');
+                              setSelectedExamType('all');
+                              setSelectedIteration('all');
+                              setSelectedTier('all');
+                              setSearchTerm('');
+                              setPage(1);
                               setLocalTab('records');
                             }}
                             style={{
@@ -924,12 +1113,35 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
               }}
             >
               <div style={{ fontSize: '12px', color: 'var(--ink)' }}>
-                Viewing records filtered for subject: <strong>{selectedSubject === 'all' ? 'All Subjects' : selectedSubject}</strong>
+                Viewing records for: <strong>{selectedSubject === 'all' ? 'All Subjects' : selectedSubject}</strong>
+                {selectedCohort !== 'all' && (
+                  <span style={{ marginLeft: '8px', color: 'var(--accent)', fontWeight: 600 }}>
+                    • Cohort {selectedCohort}
+                  </span>
+                )}
+                {selectedExamType !== 'all' && (
+                  <span style={{ marginLeft: '8px', color: '#10b981', fontWeight: 600 }}>
+                    • {selectedExamType === 'Viva' ? 'Viva Voce' : selectedExamType}
+                  </span>
+                )}
+                {selectedIteration !== 'all' && (
+                  <span style={{ marginLeft: '8px', color: '#38bdf8', fontWeight: 600 }}>
+                    • {selectedIteration}
+                  </span>
+                )}
+                {selectedTier !== 'all' && (
+                  <span style={{ marginLeft: '8px', color: '#f59e0b', fontWeight: 600 }}>
+                    • Tier: {selectedTier.toUpperCase()}
+                  </span>
+                )}
               </div>
               <button
                 onClick={() => {
                   setLocalTab(null);
                   setSelectedSubject('all');
+                  setSelectedCohort('all');
+                  setSelectedIteration('all');
+                  setPage(1);
                 }}
                 style={{
                   background: 'var(--surface)',
@@ -990,6 +1202,7 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
               value={selectedExamType}
               onChange={(e) => {
                 setSelectedExamType(e.target.value);
+                setSelectedIteration('all');
                 setPage(1);
               }}
               style={{
@@ -1002,11 +1215,10 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
               }}
             >
               <option value="all">All Assessment Types</option>
-              {(data?.filter_options?.exam_types || []).map((t, idx) => (
-                <option key={idx} value={t}>
-                  {t}
-                </option>
-              ))}
+              <option value="Weekly Evaluation">Weekly Evaluation (Internal)</option>
+              <option value="Mid-Sem">Mid-Sem</option>
+              <option value="Viva">Viva Voce</option>
+              <option value="End-Sem">End-Sem</option>
             </select>
 
             {/* Subject Filter */}
@@ -1014,6 +1226,7 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
               value={selectedSubject}
               onChange={(e) => {
                 setSelectedSubject(e.target.value);
+                setSelectedIteration('all');
                 setPage(1);
               }}
               style={{
@@ -1030,6 +1243,31 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
               {(data?.filter_options?.subjects || []).map((s, idx) => (
                 <option key={idx} value={s}>
                   {s.length > 28 ? `${s.slice(0, 26)}…` : s}
+                </option>
+              ))}
+            </select>
+
+            {/* Cohort Filter */}
+            <select
+              value={selectedCohort}
+              onChange={(e) => {
+                setSelectedCohort(e.target.value);
+                setSelectedIteration('all');
+                setPage(1);
+              }}
+              style={{
+                padding: '7px 10px',
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+                borderRadius: '6px',
+                fontSize: '12px',
+                color: 'var(--ink)',
+              }}
+            >
+              <option value="all">All Cohorts</option>
+              {(data?.filter_options?.cohorts || (availableCohorts.length ? availableCohorts : ['2024', '2025', '2026'])).map((coh, idx) => (
+                <option key={idx} value={coh}>
+                  Cohort {coh}
                 </option>
               ))}
             </select>
@@ -1080,11 +1318,14 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
               <option value="name_asc">Student Name (A-Z)</option>
             </select>
 
-            {(searchTerm || selectedExamType !== 'all' || selectedTier !== 'all') && (
+            {(searchTerm || selectedExamType !== 'all' || selectedIteration !== 'all' || selectedTier !== 'all' || selectedCohort !== 'all' || selectedSubject !== 'all') && (
               <button
                 onClick={() => {
                   setSearchTerm('');
                   setSelectedExamType('all');
+                  setSelectedIteration('all');
+                  setSelectedCohort('all');
+                  setSelectedSubject('all');
                   setSelectedTier('all');
                   setPage(1);
                 }}
@@ -1102,6 +1343,86 @@ export function AcademicPerformanceView({ filters, activeTab = 'overview', setTo
               </button>
             )}
           </div>
+
+          {/* Dynamic Iteration Button Filter (Eval 1, Eval 2... or Viva 1, Viva 2...) */}
+          {showIterationButtons && activeIterationList.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                flexWrap: 'wrap',
+                marginBottom: '14px',
+                padding: '10px 14px',
+                background: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '8px',
+                border: '1px solid var(--line)',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: 'var(--muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  marginRight: '4px',
+                }}
+              >
+                {isWeeklyEvalSelected ? 'Evaluation Iterations:' : 'Viva Iterations:'}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedIteration('all');
+                  setPage(1);
+                }}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: '16px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  fontWeight: selectedIteration === 'all' ? 600 : 500,
+                  background: selectedIteration === 'all' ? 'var(--accent)' : 'var(--surface)',
+                  color: selectedIteration === 'all' ? '#ffffff' : 'var(--ink)',
+                  border: selectedIteration === 'all' ? '1px solid var(--accent)' : '1px solid var(--line)',
+                  boxShadow: selectedIteration === 'all' ? '0 1px 3px rgba(0,0,0,0.2)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {isWeeklyEvalSelected ? 'All Weekly Evals' : 'All Vivas'}
+              </button>
+
+              {activeIterationList.map((iter) => {
+                const isActive = selectedIteration.toLowerCase() === iter.toLowerCase();
+                return (
+                  <button
+                    key={iter}
+                    type="button"
+                    onClick={() => {
+                      setSelectedIteration(iter);
+                      setPage(1);
+                    }}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '16px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      fontWeight: isActive ? 600 : 500,
+                      background: isActive ? 'var(--accent)' : 'var(--surface)',
+                      color: isActive ? '#ffffff' : 'var(--ink)',
+                      border: isActive ? '1px solid var(--accent)' : '1px solid var(--line)',
+                      boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.2)' : 'none',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {iter}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Records Table */}
           {records.length === 0 ? (
